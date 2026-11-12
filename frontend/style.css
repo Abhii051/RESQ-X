@@ -1,0 +1,1016 @@
+/* ==========================================================================
+   RESQ-X 3D Tactical Command Theme
+   Palantir / Cyberpunk Mission Control Styling
+   ========================================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #080D18;
+    color: #F8FAFC;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+.sidebar {
+    width: 245px;
+    background: #0D1422;
+    border-right: 1px solid #1E293B;
+    padding: 25px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 20;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 8px 30px;
+}
+
+.brand-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #0284c7, #8b5cf6);
+    color: #fff;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+}
+
+.brand h2 {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.brand span {
+    font-size: 8px;
+    color: #38bdf8;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+}
+
+.nav-label {
+    color: #64748B;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin: 20px 10px 10px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 5px;
+    border-radius: 8px;
+    color: #94A3B8;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    background: #172A40;
+    color: #38BDF8;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+}
+
+.nav-item i {
+    width: 18px;
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+    padding: 15px 5px;
+}
+
+.system-status {
+    font-size: 10px;
+    color: #22C55E;
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.status-dot {
+    display: inline-block;
+    height: 7px;
+    width: 7px;
+    border-radius: 50%;
+    background: #22C55E;
+    box-shadow: 0 0 8px #22C55E;
+    margin-right: 8px;
+    animation: statusPulse 1.5s infinite;
+}
+
+@keyframes statusPulse {
+    0% { transform: scale(0.9); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.version {
+    color: #475569;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* ==========================================================================
+   MAIN CONTENT & TOPBAR TELEMETRY
+   ========================================================================== */
+.main-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.topbar {
+    min-height: 95px;
+    padding: 18px 30px;
+    background: #0D1422;
+    border-bottom: 1px solid #1E293B;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.topbar h1 {
+    font-size: 21px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hologram-pill {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38BDF8;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.topbar p {
+    font-size: 11px;
+    color: #64748B;
+    margin-top: 5px;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+/* Telemetry Badges */
+.telemetry-badge {
+    background: #111827;
+    border: 1px solid #243247;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #94A3B8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.telemetry-badge.sync {
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.live-indicator {
+    font-size: 10px;
+    color: #22C55E;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.live-indicator span {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: #22C55E;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #22C55E;
+    animation: statusPulse 1.2s infinite;
+}
+
+/* HUD Toggle Buttons */
+.hud-toggle-btn {
+    background: #172A40;
+    border: 1px solid #1E4D70;
+    color: #94A3B8;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.hud-toggle-btn:hover {
+    color: #fff;
+    border-color: #38BDF8;
+}
+
+.hud-toggle-btn.active {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38BDF8;
+    color: #38BDF8;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.location {
+    font-size: 11px;
+    color: #94A3B8;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ==========================================================================
+   DASHBOARD KPI CARDS WITH SPARKLINE GLOWS
+   ========================================================================== */
+.dashboard-content {
+    padding: 22px 30px;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.kpi-card,
+.panel {
+    background: #111827;
+    border: 1px solid #243247;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.kpi-card {
+    padding: 18px 20px;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: #38BDF8;
+}
+
+.kpi-card.danger-glow:hover { box-shadow: 0 8px 25px rgba(239, 68, 68, 0.25); }
+.kpi-card.blue-glow:hover { box-shadow: 0 8px 25px rgba(56, 189, 248, 0.25); }
+.kpi-card.green-glow:hover { box-shadow: 0 8px 25px rgba(34, 197, 94, 0.25); }
+.kpi-card.orange-glow:hover { box-shadow: 0 8px 25px rgba(245, 158, 11, 0.25); }
+
+.kpi-top {
+    display: flex;
+    justify-content: space-between;
+    color: #94A3B8;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.kpi-card h2 {
+    font-size: 32px;
+    font-weight: 800;
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.kpi-card p {
+    font-size: 10px;
+    color: #64748B;
+    margin-top: 6px;
+}
+
+.kpi-sparkline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+}
+.red-line { background: linear-gradient(90deg, transparent, #EF4444, transparent); }
+.blue-line { background: linear-gradient(90deg, transparent, #38BDF8, transparent); }
+.green-line { background: linear-gradient(90deg, transparent, #22C55E, transparent); }
+.orange-line { background: linear-gradient(90deg, transparent, #F59E0B, transparent); }
+
+.red { color: #EF4444; }
+.blue { color: #38BDF8; }
+.green { color: #22C55E; }
+.orange { color: #F59E0B; }
+
+/* ==========================================================================
+   PANELS & 3D MAP VIEWPORT
+   ========================================================================== */
+.main-grid {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.panel {
+    padding: 20px;
+    min-width: 0;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.panel-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.panel-header h3 i {
+    color: #38BDF8;
+    margin-right: 7px;
+}
+
+.panel-header p {
+    font-size: 10px;
+    color: #64748B;
+    margin-top: 4px;
+}
+
+.live-tag,
+.map-live {
+    font-size: 9px;
+    font-weight: 700;
+    color: #22C55E;
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 5px 9px;
+    border-radius: 5px;
+}
+
+.chip-count {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.test-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #f97316;
+    background: rgba(249, 115, 22, 0.15);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   3D TACTICAL MAP PERSPECTIVE & RADAR
+   ========================================================================== */
+.map-viewport-wrapper {
+    position: relative;
+    border-radius: 8px;
+    border: 1px solid #243247;
+    overflow: hidden;
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.8s;
+}
+
+/* The 3D Hologram Tilt Mode! */
+.map-viewport-wrapper.perspective-3d {
+    transform: perspective(1000px) rotateX(24deg) scale(1.02);
+    transform-origin: center bottom;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 25px rgba(56, 189, 248, 0.15);
+}
+
+#map {
+    height: 420px;
+    width: 100%;
+    border-radius: 8px;
+    z-index: 1;
+    background: #0f172a;
+}
+
+/* Radar Sonar Overlay */
+.radar-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 500;
+    overflow: hidden;
+    display: none;
+}
+
+.radar-overlay.active {
+    display: block;
+}
+
+.radar-scan-line {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 400px;
+    height: 400px;
+    transform-origin: 0 0;
+    background: conic-gradient(from 0deg, rgba(56, 189, 248, 0.35) 0deg, rgba(56, 189, 248, 0) 50deg);
+    border-radius: 50%;
+    animation: radarRotate 4s linear infinite;
+}
+
+@keyframes radarRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.radar-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+}
+.ring-1 { width: 140px; height: 140px; }
+.ring-2 { width: 280px; height: 280px; }
+.ring-3 { width: 420px; height: 420px; border-style: dashed; }
+
+.radar-crosshair-h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(56, 189, 248, 0.15);
+}
+
+.radar-crosshair-v {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(56, 189, 248, 0.15);
+}
+
+.map-legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: #94A3B8;
+}
+
+.legend-dot {
+    display: inline-block;
+    height: 7px;
+    width: 7px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+.red-dot { background: #EF4444; box-shadow: 0 0 6px #ef4444; }
+.blue-dot { background: #38BDF8; box-shadow: 0 0 6px #38bdf8; }
+.purple-dot { background: #8B5CF6; box-shadow: 0 0 6px #8b5cf6; }
+.green-dot { background: #22C55E; box-shadow: 0 0 6px #22c55e; }
+
+/* ==========================================================================
+   INCIDENT FEED & BUTTONS
+   ========================================================================== */
+.incident-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
+}
+
+.incident-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 4px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 75px 10px;
+    color: #64748B;
+}
+
+.empty-state i {
+    font-size: 35px;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    font-size: 13px;
+    color: #CBD5E1;
+}
+
+.empty-state span {
+    display: block;
+    font-size: 10px;
+    margin-top: 7px;
+}
+
+/* Incident Cards */
+.incident-card {
+    background: #172033;
+    border: 1px solid #26364D;
+    border-left: 3px solid #ef4444;
+    border-radius: 7px;
+    padding: 10px 12px;
+    font-size: 11px;
+    transition: all 0.2s;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.incident-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.incident-card-top strong {
+    color: #fff;
+    font-size: 12px;
+}
+
+.incident-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.incident-badge.critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.incident-badge.high { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.incident-badge.dispatched { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); }
+
+.incident-card p {
+    color: #94A3B8;
+    margin-top: 3px;
+    line-height: 1.3;
+}
+
+.incident-card small {
+    display: block;
+    color: #64748B;
+    margin-top: 5px;
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 12px;
+    background: #0284C7;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.primary-btn:hover {
+    background: #0369A1;
+    transform: translateY(-1px);
+}
+
+.glow-btn:hover {
+    box-shadow: 0 0 15px rgba(2, 132, 199, 0.4);
+}
+
+.pulse-red {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+/* ==========================================================================
+   LOWER PANELS & RESOURCES
+   ========================================================================== */
+.bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.resource-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.resource-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    background: #172033;
+    border: 1px solid #26364D;
+    border-radius: 7px;
+    font-size: 11px;
+    transition: border-color 0.2s;
+}
+
+.resource-item:hover {
+    border-color: #38BDF8;
+}
+
+.resource-item strong {
+    display: block;
+    color: #E2E8F0;
+}
+
+.resource-item small {
+    display: block;
+    margin-top: 5px;
+    color: #64748B;
+}
+
+.resource-item > span {
+    color: #38BDF8;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.loading-text {
+    font-size: 11px;
+    color: #64748B;
+    padding: 15px 0;
+}
+
+/* ==========================================================================
+   SIMULATION PANEL
+   ========================================================================== */
+.simulation-panel {
+    margin-bottom: 20px;
+}
+
+.simulation-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.sim-btn {
+    padding: 16px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #172033;
+    color: #CBD5E1;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.sim-btn i {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 8px;
+}
+
+.sim-btn:hover {
+    transform: translateY(-2px);
+    border-color: #38BDF8;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.allocate-btn { color: #38BDF8; border-color: rgba(56, 189, 248, 0.3); }
+.allocate-btn:hover { background: rgba(56, 189, 248, 0.15); }
+
+.failure-btn { color: #EF4444; border-color: rgba(239, 68, 68, 0.3); }
+.failure-btn:hover { background: rgba(239, 68, 68, 0.15); }
+
+.hospital-btn { color: #F59E0B; border-color: rgba(245, 158, 11, 0.3); }
+.hospital-btn:hover { background: rgba(245, 158, 11, 0.15); }
+
+.traffic-btn { color: #A78BFA; border-color: rgba(167, 139, 250, 0.3); }
+.traffic-btn:hover { background: rgba(167, 139, 250, 0.15); }
+
+/* ==========================================================================
+   INTELLIGENCE SECTION
+   ========================================================================== */
+.intelligence-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.intel-stat-box {
+    background: #172033;
+    border: 1px solid #26364D;
+    padding: 12px;
+    border-radius: 7px;
+    margin-bottom: 8px;
+    font-size: 11px;
+}
+
+.intel-stat-box strong {
+    color: #38bdf8;
+    display: block;
+    margin-bottom: 4px;
+}
+
+/* Decision History Stream */
+#historyList {
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.history-item {
+    border-left: 2px solid #38BDF8;
+    padding-left: 10px;
+    color: #94A3B8;
+    line-height: 1.4;
+}
+
+.history-item.alert {
+    border-color: #EF4444;
+    color: #fca5a5;
+}
+
+.history-item.success {
+    border-color: #22C55E;
+    color: #86efac;
+}
+
+/* ==========================================================================
+   HOLOGRAPHIC MODAL WITH AUDIO VISUALIZER
+   ========================================================================== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 13, 24, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
+.modal {
+    width: 100%;
+    max-width: 490px;
+    background: #111827;
+    border: 1px solid #38BDF8;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), 0 0 20px rgba(56, 189, 248, 0.3);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.modal-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.modal-sub {
+    font-size: 10px;
+    color: #64748B;
+    letter-spacing: 0.5px;
+}
+
+.modal-header button {
+    background: none;
+    border: none;
+    color: #94A3B8;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* Radio Visualizer Box */
+.radio-visualizer {
+    background: #090e17;
+    border: 1px solid #243247;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 16px;
+}
+
+.radio-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #38bdf8;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px;
+}
+
+.rec-badge {
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+}
+
+.rec-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: statusPulse 1s infinite;
+}
+
+#waveformCanvas {
+    width: 100%;
+    height: 38px;
+    display: block;
+    background: #060a12;
+    border-radius: 4px;
+}
+
+.modal form label {
+    display: block;
+    font-size: 11px;
+    color: #94A3B8;
+    margin-bottom: 6px;
+    margin-top: 12px;
+    font-weight: 600;
+}
+
+.modal input,
+.modal textarea,
+.modal select {
+    width: 100%;
+    background: #0B1220;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: white;
+    outline: none;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.modal input:focus,
+.modal textarea:focus,
+.modal select:focus {
+    border-color: #38BDF8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.modal textarea {
+    min-height: 70px;
+    resize: vertical;
+}
+
+.coordinate-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.location-btn {
+    width: 100%;
+    margin: 12px 0 16px;
+    padding: 9px;
+    background: #172A40;
+    color: #38BDF8;
+    border: 1px solid #1E4D70;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   ANIMATED LASER ROUTE STYLING (LEAFLET SVG)
+   ========================================================================== */
+@keyframes laserFlow {
+    from { stroke-dashoffset: 40; }
+    to { stroke-dashoffset: 0; }
+}
+
+.laser-path-amb {
+    stroke-dasharray: 8, 8 !important;
+    animation: laserFlow 1.2s linear infinite !important;
+    filter: drop-shadow(0 0 6px #8b5cf6) !important;
+}
+
+.laser-path-hosp {
+    stroke-dasharray: 6, 6 !important;
+    animation: laserFlow 1s linear infinite !important;
+    filter: drop-shadow(0 0 6px #38bdf8) !important;
+}
+
+/* Sonar Beacon Marker for Emergencies */
+.sonar-marker {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 11px;
+    box-shadow: 0 0 15px #ef4444;
+}
+
+.sonar-marker::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid #ef4444;
+    animation: sonarRing 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes sonarRing {
+    0% { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+@media (max-width: 1100px) {
+    .sidebar { width: 200px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .main-grid { grid-template-columns: 1fr; }
+    .incident-panel { min-height: 350px; }
+}
+
+@media (max-width: 750px) {
+    .sidebar { display: none; }
+    .topbar { align-items: flex-start; flex-direction: column; }
+    .topbar-right { flex-wrap: wrap; gap: 10px; }
+    .dashboard-content { padding: 15px; }
+    .bottom-grid, .intelligence-grid { grid-template-columns: 1fr; }
+    .simulation-buttons { grid-template-columns: repeat(2, 1fr); }
+    #map { height: 320px; }
+}

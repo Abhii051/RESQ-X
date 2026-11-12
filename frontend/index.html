@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>RESQ-X | 3D Tactical Emergency Intelligence</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-shield-heart"></i>
+                </div>
+
+                <div>
+                    <h2>RESQ-X</h2>
+                    <span>TACTICAL INTEL GRID</span>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <p class="nav-label">OPERATIONS</p>
+
+                <a class="nav-item active" href="#">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    Command Center
+                </a>
+
+                <a class="nav-item" href="#incidents">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Emergencies
+                </a>
+
+                <a class="nav-item" href="#ambulances">
+                    <i class="fa-solid fa-truck-medical"></i>
+                    Ambulance Fleet
+                </a>
+
+                <a class="nav-item" href="#hospitals">
+                    <i class="fa-solid fa-hospital"></i>
+                    Hospitals
+                </a>
+
+                <p class="nav-label">INTELLIGENCE</p>
+
+                <a class="nav-item" href="#predictions">
+                    <i class="fa-solid fa-brain"></i>
+                    Demand Prediction
+                </a>
+
+                <a class="nav-item" href="#ripple">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    Ripple Analyzer
+                </a>
+
+                <a class="nav-item" href="#history">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    Event History
+                </a>
+            </div>
+
+            <div class="sidebar-bottom">
+                <div class="system-status">
+                    <span class="status-dot"></span>
+                    DEFENSE GRID: OPERATIONAL
+                </div>
+
+                <div class="version">
+                    RESQ-X v2.4 | TACTICAL 3D
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- TOPBAR WITH TACTICAL TELEMETRY -->
+            <header class="topbar">
+
+                <div>
+                    <h1>Emergency Command Center <span class="hologram-pill">3D TACTICAL</span></h1>
+                    <p>Predictive Emergency Intelligence & Self-Adaptive Response Network</p>
+                </div>
+
+                <div class="topbar-right">
+
+                    <!-- Military Clock -->
+                    <div class="telemetry-badge">
+                        <i class="fa-solid fa-clock"></i>
+                        <span id="militaryTime">00:00:00 UTC</span>
+                    </div>
+
+                    <!-- Grid Ping -->
+                    <div class="telemetry-badge sync">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        <span>LATENCY: 12ms</span>
+                    </div>
+
+                    <div class="live-indicator">
+                        <span></span>
+                        LIVE SAT-MONITORING
+                    </div>
+
+                    <!-- 3D Toggle -->
+                    <button class="hud-toggle-btn active" id="toggle3D" title="Toggle 3D Isometric Tactical View">
+                        <i class="fa-solid fa-cube"></i> 3D VIEW
+                    </button>
+
+                    <!-- Radar Scan Toggle -->
+                    <button class="hud-toggle-btn" id="toggleRadar" title="Toggle Radar Sonar Overlay">
+                        <i class="fa-solid fa-satellite"></i> RADAR
+                    </button>
+
+                    <!-- SFX Audio Toggle -->
+                    <button class="hud-toggle-btn active" id="toggleAudio" title="Toggle Tactical Audio FX">
+                        <i class="fa-solid fa-volume-high" id="audioIcon"></i> SFX
+                    </button>
+
+                    <div class="location">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        Sector Alpha Grid
+                    </div>
+
+                </div>
+
+            </header>
+
+            <!-- DASHBOARD CONTENT -->
+            <section class="dashboard-content">
+
+                <!-- KPI CARDS -->
+                <div class="kpi-grid">
+
+                    <div class="kpi-card danger-glow">
+                        <div class="kpi-top">
+                            <span>Active Emergencies</span>
+                            <i class="fa-solid fa-triangle-exclamation red"></i>
+                        </div>
+                        <h2 id="activeIncidents">00</h2>
+                        <p>Real-time tracked incidents</p>
+                        <div class="kpi-sparkline red-line"></div>
+                    </div>
+
+                    <div class="kpi-card blue-glow">
+                        <div class="kpi-top">
+                            <span>Available Ambulances</span>
+                            <i class="fa-solid fa-truck-medical blue"></i>
+                        </div>
+                        <h2 id="availableAmbulances">15</h2>
+                        <p>Fleet ready for dispatch</p>
+                        <div class="kpi-sparkline blue-line"></div>
+                    </div>
+
+                    <div class="kpi-card green-glow">
+                        <div class="kpi-top">
+                            <span>Available Hospital Beds</span>
+                            <i class="fa-solid fa-bed green"></i>
+                        </div>
+                        <h2 id="availableBeds">42</h2>
+                        <p>ICU & trauma capacity</p>
+                        <div class="kpi-sparkline green-line"></div>
+                    </div>
+
+                    <div class="kpi-card orange-glow">
+                        <div class="kpi-top">
+                            <span>Critical Cases</span>
+                            <i class="fa-solid fa-heart-pulse orange"></i>
+                        </div>
+                        <h2 id="criticalCases">00</h2>
+                        <p>Immediate ALS required</p>
+                        <div class="kpi-sparkline orange-line"></div>
+                    </div>
+
+                </div>
+
+                <!-- MAP AND INCIDENT FEED -->
+                <div class="main-grid">
+
+                    <div class="panel map-panel">
+
+                        <div class="panel-header">
+                            <div>
+                                <h3>
+                                    <i class="fa-solid fa-map-location-dot"></i>
+                                    Tactical Geo-Spatial Grid
+                                </h3>
+                                <p>3D Holographic view • Live telemetry tracking</p>
+                            </div>
+
+                            <div class="map-controls-header">
+                                <span class="map-live">● REAL-TIME TELEMETRY</span>
+                            </div>
+                        </div>
+
+                        <div class="map-legend">
+                            <span><i class="legend-dot red-dot"></i> Critical Incident</span>
+                            <span><i class="legend-dot blue-dot"></i> Available Ambulance</span>
+                            <span><i class="legend-dot purple-dot"></i> Dispatched Route</span>
+                            <span><i class="legend-dot green-dot"></i> Medical Center</span>
+                        </div>
+
+                        <!-- 3D Perspective Map Viewport -->
+                        <div class="map-viewport-wrapper perspective-3d" id="mapWrapper">
+                            <div id="map"></div>
+                            
+                            <!-- Rotating Radar Sonar Overlay -->
+                            <div class="radar-overlay" id="radarOverlay">
+                                <div class="radar-scan-line"></div>
+                                <div class="radar-ring ring-1"></div>
+                                <div class="radar-ring ring-2"></div>
+                                <div class="radar-ring ring-3"></div>
+                                <div class="radar-crosshair-h"></div>
+                                <div class="radar-crosshair-v"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- INCIDENT FEED -->
+                    <div class="panel incident-panel" id="incidents">
+
+                        <div class="panel-header">
+                            <div>
+                                <h3>Emergency Ingestion Feed</h3>
+                                <p>Live priority dispatch queue</p>
+                            </div>
+                            <span class="live-tag">LIVE FEED</span>
+                        </div>
+
+                        <div id="incidentList" class="incident-list">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <p>No active emergencies</p>
+                                <span>City sector is currently stable</span>
+                            </div>
+                        </div>
+
+                        <button class="primary-btn glow-btn" id="newEmergencyBtn">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            Report Emergency Incident
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <!-- LOWER GRID: FLEET & HOSPITALS -->
+                <div class="bottom-grid">
+
+                    <!-- AMBULANCE PANEL -->
+                    <div class="panel" id="ambulances">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Ambulance Fleet Status</h3>
+                                <p>Real-time vehicle telematics</p>
+                            </div>
+                            <span class="chip-count" id="ambCountChip">5 UNITS</span>
+                        </div>
+                        <div id="ambulanceList" class="resource-list">
+                            <p class="loading-text">Loading fleet telemetry...</p>
+                        </div>
+                    </div>
+
+                    <!-- HOSPITAL PANEL -->
+                    <div class="panel" id="hospitals">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Hospital Medical Network</h3>
+                                <p>Trauma centers & bed handshake</p>
+                            </div>
+                            <span class="chip-count" id="hospCountChip">4 CENTERS</span>
+                        </div>
+                        <div id="hospitalList" class="resource-list">
+                            <p class="loading-text">Loading medical network...</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- SCENARIO CONTROL CENTER (SIMULATION) -->
+                <div class="panel simulation-panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <h3>
+                                <i class="fa-solid fa-sliders"></i>
+                                Autonomous Scenario Control Center
+                            </h3>
+                            <p>Inject systemic disruptions to demonstrate self-adaptive optimization</p>
+                        </div>
+                        <span class="test-badge">CHAOS STRESS SUITE</span>
+                    </div>
+
+                    <div class="simulation-buttons">
+
+                        <button class="sim-btn allocate-btn" id="allocateBtn">
+                            <i class="fa-solid fa-brain"></i>
+                            Run Bipartite Allocation
+                        </button>
+
+                        <button class="sim-btn failure-btn" id="failureBtn">
+                            <i class="fa-solid fa-car-burst"></i>
+                            Simulate Vehicle Breakdown
+                        </button>
+
+                        <button class="sim-btn hospital-btn" id="hospitalBtn">
+                            <i class="fa-solid fa-hospital-user"></i>
+                            Simulate Hospital Saturation
+                        </button>
+
+                        <button class="sim-btn traffic-btn" id="trafficBtn">
+                            <i class="fa-solid fa-cloud-showers-heavy"></i>
+                            Simulate Monsoon Gridlock
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <!-- INTELLIGENCE SECTION -->
+                <div class="intelligence-grid">
+
+                    <div class="panel" id="predictions">
+                        <div class="panel-header">
+                            <div>
+                                <h3>
+                                    <i class="fa-solid fa-chart-line"></i>
+                                    Predictive Demand Intelligence
+                                </h3>
+                                <p>Proactive fleet pre-positioning based on sector demand</p>
+                            </div>
+                        </div>
+
+                        <div id="predictionContent">
+                            <p class="loading-text">Computing spatial demand forecasting...</p>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="ripple">
+                        <div class="panel-header">
+                            <div>
+                                <h3>
+                                    <i class="fa-solid fa-diagram-project"></i>
+                                    Emergency Ripple Analyzer
+                                </h3>
+                                <p>Calculates cascading impact across adjacent sectors</p>
+                            </div>
+                        </div>
+
+                        <div id="rippleContent">
+                            <p class="loading-text">Monitoring network stability. No cascades active.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- DECISION HISTORY -->
+                <div class="panel history-panel" id="history">
+                    <div class="panel-header">
+                        <div>
+                            <h3>
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                                Explainable AI Decision Stream
+                            </h3>
+                            <p>Autonomous audit log with reasoning rationale</p>
+                        </div>
+                    </div>
+
+                    <div id="historyList">
+                        <p class="loading-text">No autonomous actions recorded yet.</p>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- EMERGENCY REPORTING MODAL WITH AUDIO WAVEFORM -->
+    <div class="modal-overlay" id="emergencyModal">
+
+        <div class="modal holographic-modal">
+
+            <div class="modal-header">
+                <div>
+                    <h2><i class="fa-solid fa-satellite-dish" style="color:#ef4444;"></i> Ingest Emergency</h2>
+                    <span class="modal-sub">Direct Distress Transmission Link</span>
+                </div>
+                <button id="closeModal">&times;</button>
+            </div>
+
+            <!-- Radio Frequency Waveform Visualizer -->
+            <div class="radio-visualizer">
+                <div class="radio-header">
+                    <span><i class="fa-solid fa-tower-broadcast"></i> FREQ: 154.280 MHz</span>
+                    <span class="rec-badge"><span class="rec-dot"></span> LIVE AUDIO INTAKE</span>
+                </div>
+                <canvas id="waveformCanvas" width="430" height="42"></canvas>
+            </div>
+
+            <form id="emergencyForm">
+
+                <label>Emergency Description / Audio Transcript</label>
+                <textarea
+                    id="emergencyDescription"
+                    placeholder="e.g. Major collision at Sector 4 flyover, 3 people unconscious, fire risk..."
+                    required>Severe multi-vehicle collision near Central Flyover, 2 victims unconscious.</textarea>
+
+                <label>Emergency Type</label>
+                <select id="emergencyType">
+                    <option value="Cardiac Emergency">❤️ Cardiac Emergency (Immediate ALS)</option>
+                    <option value="Road Accident">🚗 Road Accident (Multi-Vehicle)</option>
+                    <option value="Fire / Burn">🔥 Fire / Burn Trauma</option>
+                    <option value="Severe Medical">🫁 Severe Respiratory / Stroke</option>
+                    <option value="Other">⚠️ Other Emergency</option>
+                </select>
+
+                <label>Location Landmark</label>
+                <input
+                    type="text"
+                    id="emergencyLocation"
+                    placeholder="e.g. Sector 4 Central Junction"
+                    value="Sector 4 Central Junction"
+                    required>
+
+                <div class="coordinate-grid">
+                    <div>
+                        <label>Latitude</label>
+                        <input type="number" step="any" id="latitude" value="17.3984">
+                    </div>
+                    <div>
+                        <label>Longitude</label>
+                        <input type="number" step="any" id="longitude" value="78.4902">
+                    </div>
+                </div>
+
+                <button type="button" class="location-btn" id="detectLocation">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    Auto-Lock GPS Telemetry
+                </button>
+
+                <button type="submit" class="primary-btn pulse-red">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Broadcast Emergency to Defense Grid
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- LEAFLET SCRIPT -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
