@@ -2,15 +2,11 @@ import React, { useState, useEffect, Component } from 'react';
 import Header from './components/Header';
 import { fetchState, subscribeToWebSocket } from './services/api';
 
-// 8 Unified Command Centre Modules
+// 4 Completely Distinct Role-Based Dashboards
+import CitizenPortalView from './views/CitizenPortalView';
+import AmbulancePortalView from './views/AmbulancePortalView';
+import HospitalPortalView from './views/HospitalPortalView';
 import CommandCentreView from './views/CommandCentreView';
-import ReportingView from './views/ReportingView';
-import OptimizerView from './views/OptimizerView';
-import HospitalView from './views/HospitalView';
-import PredictionHotspotsView from './views/PredictionHotspotsView';
-import DisruptionRippleView from './views/DisruptionRippleView';
-import ComparisonView from './views/ComparisonView';
-import AuditDecisionView from './views/AuditDecisionView';
 
 // Error Boundary for stability
 class ErrorBoundary extends Component {
@@ -102,7 +98,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen w-screen flex flex-col bg-[#F4F7FA] text-[#243447]">
-        {/* Top Header with the Unified Command Modules */}
+        {/* Top Header with the 4 Distinct Role Dashboards */}
         <Header
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
@@ -111,59 +107,34 @@ export default function App() {
           onRefresh={loadData}
         />
 
-        {/* Full-Width Module Workspace */}
+        {/* Full-Width Role Workspace */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
+          {currentTab === 'citizen' && (
+            <CitizenPortalView
+              state={state}
+              onRefresh={loadData}
+            />
+          )}
+
+          {currentTab === 'ambulance' && (
+            <AmbulancePortalView
+              state={state}
+              onRefresh={loadData}
+            />
+          )}
+
+          {currentTab === 'hospital' && (
+            <HospitalPortalView
+              state={state}
+              onRefresh={loadData}
+            />
+          )}
+
           {currentTab === 'command' && (
             <CommandCentreView
               state={state}
-              onSelectTab={setCurrentTab}
-            />
-          )}
-
-          {currentTab === 'ingestion' && (
-            <ReportingView
-              state={state}
               onRefresh={loadData}
               onSelectTab={setCurrentTab}
-            />
-          )}
-
-          {currentTab === 'allocation' && (
-            <OptimizerView
-              state={state}
-            />
-          )}
-
-          {currentTab === 'hospitals' && (
-            <HospitalView
-              state={state}
-              onRefresh={loadData}
-            />
-          )}
-
-          {currentTab === 'prediction' && (
-            <PredictionHotspotsView
-              state={state}
-              onRefresh={loadData}
-            />
-          )}
-
-          {currentTab === 'disruptions' && (
-            <DisruptionRippleView
-              state={state}
-              onRefresh={loadData}
-            />
-          )}
-
-          {currentTab === 'comparison' && (
-            <ComparisonView
-              state={state}
-            />
-          )}
-
-          {currentTab === 'audit' && (
-            <AuditDecisionView
-              state={state}
             />
           )}
         </main>

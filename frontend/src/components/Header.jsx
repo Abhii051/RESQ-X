@@ -1,32 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LayoutDashboard,
-  AlertCircle,
-  Sliders,
+  Users,
+  Ambulance,
   Building2,
-  TrendingUp,
-  Zap,
-  Scale,
-  History,
+  LayoutDashboard,
   Bell,
   RotateCcw,
   RefreshCw,
   ShieldAlert,
   Flame,
-  CheckCircle2,
   X
 } from 'lucide-react';
 import { triggerSimulationEvent } from '../services/api';
 
-export const COMMAND_MODULES = [
-  { id: 'command', label: 'Command Centre & Map', icon: LayoutDashboard, badge: 'Main ECC' },
-  { id: 'ingestion', label: 'Emergency Intake & AI', icon: AlertCircle, badge: 'Triage' },
-  { id: 'allocation', label: 'Resource Allocation', icon: Sliders, badge: 'Optimizer' },
-  { id: 'hospitals', label: 'Hospital Network', icon: Building2, badge: 'Beds' },
-  { id: 'prediction', label: 'Demand Prediction', icon: TrendingUp, badge: 'Hotspots' },
-  { id: 'disruptions', label: 'Disruption & Ripple', icon: Zap, badge: 'Adaptive' },
-  { id: 'comparison', label: 'AI vs Traditional', icon: Scale, badge: 'Benchmark' },
-  { id: 'audit', label: 'Decision Audit & History', icon: History, badge: 'Audit' },
+export const ROLE_DASHBOARDS = [
+  { id: 'citizen', label: 'Citizen Dashboard (SOS)', icon: Users, badge: 'Public 108' },
+  { id: 'ambulance', label: 'Ambulance MDT', icon: Ambulance, badge: 'Paramedic' },
+  { id: 'hospital', label: 'Hospital ER & ICU', icon: Building2, badge: 'Facility' },
+  { id: 'command', label: 'Command Centre (Brain)', icon: LayoutDashboard, badge: 'Master ECC' },
 ];
 
 export default function Header({ currentTab, onSelectTab, state, wsStatus, onRefresh }) {
@@ -68,11 +59,11 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
             <div className="flex items-center space-x-1.5">
               <span className="font-extrabold tracking-wide text-[#17324D] text-base">RESQ-X</span>
               <span className="text-[10px] bg-[#0F9D91] text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
-                HYDERABAD ECC
+                HYDERABAD
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-              Predictive Emergency Intelligence & Self-Adaptive Response Network
+              Intelligent Emergency Response Network • Problem Statement 10
             </p>
           </div>
         </div>
@@ -96,7 +87,7 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
           </div>
         </div>
 
-        {/* Right: Reset Action, Live Alerts Drawer & Clock */}
+        {/* Right: Reset Action, Live Alerts & Clock */}
         <div className="flex items-center space-x-2 shrink-0">
           {/* Live Alerts Bell */}
           <div className="relative">
@@ -157,7 +148,7 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
             onClick={handleReset}
             disabled={resetting}
             className="px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs"
-            title="Restore pristine baseline state"
+            title="Restore pristine baseline demonstration state"
           >
             <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${resetting ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{resetting ? 'Resetting...' : 'Reset'}</span>
@@ -172,30 +163,33 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
           <button
             onClick={onRefresh}
             className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-            title="Sync data"
+            title="Sync live telemetry data"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Primary Navigation Tabs */}
-      <nav className="h-11 px-4 md:px-6 bg-[#F4F7FA] border-b border-[#E3E9EF] flex items-center space-x-1 overflow-x-auto no-scrollbar">
-        {COMMAND_MODULES.map((tab) => {
+      {/* Primary Role Navigation Tabs */}
+      <nav className="h-12 px-4 md:px-6 bg-[#F4F7FA] border-b border-[#E3E9EF] flex items-center space-x-2 overflow-x-auto no-scrollbar">
+        {ROLE_DASHBOARDS.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
+          const isCommand = tab.id === 'command';
 
           return (
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 select-none ${
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 select-none ${
                 isActive
-                  ? 'bg-[#17324D] text-white shadow-xs'
+                  ? isCommand
+                    ? 'bg-gradient-to-r from-[#17324D] to-[#2563A6] text-white shadow-sm'
+                    : 'bg-[#17324D] text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-teal-300' : 'text-slate-400'}`} />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-teal-300' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
 
               {tab.badge && (
