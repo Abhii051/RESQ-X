@@ -1,5 +1,5 @@
 // RESQ-X API, Authentication & WebSocket Service
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 // Token Management
 export function getStoredToken() {
@@ -276,7 +276,8 @@ export async function updateHospitalCapacity(hospitalId, data) {
 
 export function subscribeToWebSocket(onMessage, onStatusChange) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  const defaultWs = `${protocol}//${window.location.host}/ws`;
+  const wsUrl = import.meta.env.VITE_WS_BASE || defaultWs;
 
   let socket = null;
   let reconnectTimer = null;
