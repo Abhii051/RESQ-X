@@ -8,8 +8,18 @@ import {
   Activity,
   AlertOctagon,
   Building2,
-  Ambulance as AmbIcon
+  Ambulance as AmbIcon,
+  Box,
+  Volume2,
+  VolumeX,
+  Radio
 } from 'lucide-react';
+import {
+  playBlip,
+  playRadarPing,
+  isSoundEnabled,
+  toggleSound
+} from '../utils/soundEffects';
 
 export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, onSelectHospital }) {
   const mapContainerRef = useRef(null);
@@ -32,6 +42,10 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
   });
 
   const [selectedEntity, setSelectedEntity] = useState(null);
+  const [is3D, setIs3D] = useState(false);
+  const [isRadarActive, setIsRadarActive] = useState(false);
+  const [sfxActive, setSfxActive] = useState(() => isSoundEnabled());
+
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -143,6 +157,7 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
         const marker = L.marker([hosp.lat, hosp.lng], { icon: customIcon });
 
         marker.on('click', () => {
+          playBlip(700);
           setSelectedEntity({ type: 'hospital', data: hosp });
           if (onSelectHospital) onSelectHospital(hosp);
         });
@@ -202,6 +217,7 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
         const marker = L.marker([amb.lat, amb.lng], { icon: customIcon });
 
         marker.on('click', () => {
+          playBlip(800);
           setSelectedEntity({ type: 'ambulance', data: amb });
           if (onSelectAmbulance) onSelectAmbulance(amb);
         });
@@ -266,6 +282,7 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
         const marker = L.marker([inc.lat, inc.lng], { icon: customIcon });
 
         marker.on('click', () => {
+          playBlip(900);
           setSelectedEntity({ type: 'incident', data: inc });
           if (onSelectIncident) onSelectIncident(inc);
         });
@@ -311,8 +328,8 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
   }, [state, activeFilters]);
 
   return (
-    <div className="relative w-full h-full rounded-xl overflow-hidden border border-[#E3E9EF] shadow-xs bg-slate-100 flex flex-col">
-      {/* Map Control / Filter Toolbar */}
+    <div className={`relative w-full h-full rounded-xl overflow-hidden border border-[#E3E9EF] shadow-xs bg-slate-900 flex flex-col map-perspective-wrapper ${is3D ? 'perspective-3d' : ''}`}>
+      {/* Map Control / Filter Toolbar (Left) */}
       <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-md rounded-lg p-2.5 shadow-md border border-[#E3E9EF] flex items-center space-x-2 text-xs">
         <span className="font-bold text-[#17324D] flex items-center space-x-1 pr-1.5 border-r border-slate-200">
           <Layers className="w-3.5 h-3.5 text-[#2563A6]" />
@@ -323,7 +340,10 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
           <input
             type="checkbox"
             checked={activeFilters.showCritical}
-            onChange={(e) => setActiveFilters({ ...activeFilters, showCritical: e.target.checked })}
+            onChange={(e) => {
+              playBlip(700);
+              setActiveFilters({ ...activeFilters, showCritical: e.target.checked });
+            }}
             className="rounded text-red-600 focus:ring-0 w-3.5 h-3.5"
           />
           <span className="text-red-700 font-medium">Critical</span>
@@ -333,7 +353,10 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
           <input
             type="checkbox"
             checked={activeFilters.showAmbulances}
-            onChange={(e) => setActiveFilters({ ...activeFilters, showAmbulances: e.target.checked })}
+            onChange={(e) => {
+              playBlip(700);
+              setActiveFilters({ ...activeFilters, showAmbulances: e.target.checked });
+            }}
             className="rounded text-blue-600 focus:ring-0 w-3.5 h-3.5"
           />
           <span className="text-blue-700 font-medium">Ambulances</span>
@@ -343,7 +366,10 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
           <input
             type="checkbox"
             checked={activeFilters.showHospitals}
-            onChange={(e) => setActiveFilters({ ...activeFilters, showHospitals: e.target.checked })}
+            onChange={(e) => {
+              playBlip(700);
+              setActiveFilters({ ...activeFilters, showHospitals: e.target.checked });
+            }}
             className="rounded text-teal-600 focus:ring-0 w-3.5 h-3.5"
           />
           <span className="text-teal-700 font-medium">Hospitals</span>
@@ -353,7 +379,10 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
           <input
             type="checkbox"
             checked={activeFilters.showRoutes}
-            onChange={(e) => setActiveFilters({ ...activeFilters, showRoutes: e.target.checked })}
+            onChange={(e) => {
+              playBlip(700);
+              setActiveFilters({ ...activeFilters, showRoutes: e.target.checked });
+            }}
             className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5"
           />
           <span className="text-indigo-700 font-medium">Routes</span>
@@ -363,11 +392,70 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
           <input
             type="checkbox"
             checked={activeFilters.showZones}
-            onChange={(e) => setActiveFilters({ ...activeFilters, showZones: e.target.checked })}
+            onChange={(e) => {
+              playBlip(700);
+              setActiveFilters({ ...activeFilters, showZones: e.target.checked });
+            }}
             className="rounded text-slate-600 focus:ring-0 w-3.5 h-3.5"
           />
           <span className="text-slate-700 font-medium">Zones</span>
         </label>
+      </div>
+
+      {/* Tactical HUD Controls Toolbar (Right) */}
+      <div className="absolute top-3 right-3 z-[1000] flex items-center space-x-1.5 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-lg text-xs">
+        {/* 3D Isometric View Toggle */}
+        <button
+          onClick={() => {
+            setIs3D(!is3D);
+            playBlip(is3D ? 500 : 700);
+          }}
+          className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition border select-none ${
+            is3D
+              ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white border-teal-300 shadow-md shadow-teal-500/30'
+              : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
+          }`}
+          title="Toggle 3D Isometric Hologram Perspective"
+        >
+          <Box className="w-3.5 h-3.5" />
+          <span>{is3D ? '3D VIEW' : '2D FLAT'}</span>
+        </button>
+
+        {/* Radar Sonar Overlay Toggle */}
+        <button
+          onClick={() => {
+            const next = !isRadarActive;
+            setIsRadarActive(next);
+            if (next) playRadarPing();
+            else playBlip(500);
+          }}
+          className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition border select-none ${
+            isRadarActive
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-500/30'
+              : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
+          }`}
+          title="Toggle Radar Sonar Grid Sweep"
+        >
+          <Radio className={`w-3.5 h-3.5 ${isRadarActive ? 'animate-pulse text-emerald-200' : ''}`} />
+          <span>RADAR</span>
+        </button>
+
+        {/* Procedural Audio FX Toggle */}
+        <button
+          onClick={() => {
+            const next = toggleSound();
+            setSfxActive(next);
+          }}
+          className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition border select-none ${
+            sfxActive
+              ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/30'
+              : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+          }`}
+          title="Toggle Procedural Web Audio Sound FX"
+        >
+          {sfxActive ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          <span>SFX</span>
+        </button>
       </div>
 
       {/* Map Legend */}
@@ -397,7 +485,7 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
 
       {/* Selected Entity Drawer */}
       {selectedEntity && (
-        <div className="absolute top-3 right-3 z-[1000] w-80 bg-white rounded-xl shadow-xl border border-[#E3E9EF] p-4 animate-in fade-in slide-in-from-right duration-200">
+        <div className="absolute top-14 right-3 z-[1000] w-80 bg-white rounded-xl shadow-xl border border-[#E3E9EF] p-4 animate-in fade-in slide-in-from-right duration-200">
           <div className="flex items-start justify-between pb-2 border-b border-slate-100">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -410,7 +498,10 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
               </h4>
             </div>
             <button
-              onClick={() => setSelectedEntity(null)}
+              onClick={() => {
+                playBlip(500);
+                setSelectedEntity(null);
+              }}
               className="text-slate-400 hover:text-slate-600 text-sm font-bold"
             >
               ×
@@ -484,6 +575,18 @@ export default function LiveMap({ state, onSelectIncident, onSelectAmbulance, on
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Radar Sonar Scanning Grid Overlay */}
+      {isRadarActive && (
+        <div className="radar-overlay">
+          <div className="radar-scan-line" />
+          <div className="radar-ring ring-1" />
+          <div className="radar-ring ring-2" />
+          <div className="radar-ring ring-3" />
+          <div className="radar-crosshair-h" />
+          <div className="radar-crosshair-v" />
         </div>
       )}
 

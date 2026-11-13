@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertCircle,
   MapPin,
@@ -20,11 +20,14 @@ import {
   Check,
   User,
   LogOut,
-  Users
+  Users,
+  Radio
 } from 'lucide-react';
 import { submitEmergencyReport, analyzeTextAI, fetchCitizenIncidents } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import RoleAuthGate from '../components/RoleAuthGate';
+import { playAlertSound, playSuccessChime, playBlip } from '../utils/soundEffects';
+
 
 const QUICK_EMERGENCIES = [
   {
@@ -90,6 +93,43 @@ export default function CitizenPortalView({ state, onRefresh }) {
   const [aiPreview, setAiPreview] = useState(null);
   const [locationShared, setLocationShared] = useState(false);
   const [citizenDbHistory, setCitizenDbHistory] = useState([]);
+  const waveformCanvasRef = useRef(null);
+
+  // Animated Oscilloscope Waveform Visualizer
+  useEffect(() => {
+    const canvas = waveformCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let phase = 0;
+    let animId;
+
+    const drawWave = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#0F9D91';
+      ctx.beginPath();
+
+      const width = canvas.width;
+      const height = canvas.height;
+
+      for (let x = 0; x < width; x++) {
+        const envelope = Math.sin((x / width) * Math.PI);
+        const y = (height / 2) +
+          (Math.sin((x * 0.05) + phase) * 8 + Math.sin((x * 0.12) - phase * 0.6) * 4) * envelope;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      phase += 0.12;
+      animId = requestAnimationFrame(drawWave);
+    };
+
+    drawWave();
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, []);
 
   // Fetch SQLite history for this citizen
   const loadHistory = async () => {
@@ -162,6 +202,7 @@ export default function CitizenPortalView({ state, onRefresh }) {
 
     try {
       setSubmitting(true);
+      playAlertSound();
       const res = await submitEmergencyReport({
         description,
         category,
@@ -194,6 +235,7 @@ export default function CitizenPortalView({ state, onRefresh }) {
 
     try {
       setSubmitting(true);
+      playAlertSound();
       const res = await submitEmergencyReport({
         description: item.desc,
         category: item.category,
@@ -363,6 +405,26 @@ export default function CitizenPortalView({ state, onRefresh }) {
                 AI Powered Intake
               </span>
             </h3>
+
+            {/* Radio Frequency & Live Oscilloscope Audio Intake Bar */}
+            <div className="bg-slate-900 text-teal-300 p-3 rounded-xl border border-slate-800 space-y-2 shadow-inner">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="flex items-center space-x-1.5 text-slate-300">
+                  <Radio className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+                  <span>EMERGENCY FREQ: <strong className="text-teal-300">154.280 MHz</strong></span>
+                </span>
+                <span className="flex items-center space-x-1.5 bg-red-950/80 text-red-400 border border-red-800/60 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                  <span>LIVE AUDIO INTAKE</span>
+                </span>
+              </div>
+              <canvas
+                ref={waveformCanvasRef}
+                width={430}
+                height={36}
+                className="w-full h-9 rounded-lg bg-slate-950/80 border border-slate-800/80 shadow-xs"
+              />
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Category */}
