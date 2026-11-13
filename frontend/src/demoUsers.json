@@ -1,0 +1,336 @@
+[
+  {
+    "id": "cit-01",
+    "username": "citizen_rahul",
+    "role": "citizen",
+    "name": "Rahul Sharma",
+    "entity_id": null,
+    "metadata": {
+      "blood_group": "O+",
+      "allergies": "Penicillin",
+      "address": "Madhapur Near Cyber Towers",
+      "emergency_contact_name": "Anjali Sharma (Spouse)",
+      "emergency_contact_phone": "+91 9876543211"
+    },
+    "defaultPass": "citizen123"
+  },
+  {
+    "id": "cit-02",
+    "username": "citizen_priya",
+    "role": "citizen",
+    "name": "Priya Reddy",
+    "entity_id": null,
+    "metadata": {
+      "blood_group": "B+",
+      "allergies": "None",
+      "address": "Road No. 12, Banjara Hills",
+      "emergency_contact_name": "Vikram Reddy (Brother)",
+      "emergency_contact_phone": "+91 9848022339"
+    },
+    "defaultPass": "citizen123"
+  },
+  {
+    "id": "cit-03",
+    "username": "citizen_arun",
+    "role": "citizen",
+    "name": "Arun Verma",
+    "entity_id": null,
+    "metadata": {
+      "blood_group": "A+",
+      "allergies": "Sulfa Drugs",
+      "address": "Kukatpally Housing Board",
+      "emergency_contact_name": "Kavita Verma (Wife)",
+      "emergency_contact_phone": "+91 9811223345"
+    },
+    "defaultPass": "citizen123"
+  },
+  {
+    "id": "usr-amb-01",
+    "username": "paramedic_a01",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A01",
+    "entity_id": "amb-01",
+    "metadata": {
+      "unit_code": "RESQ-A01",
+      "ambulance_id": "amb-01",
+      "ambulance_type": "ALS",
+      "driver_name": "Suresh Kumar",
+      "paramedic_name": "Dr. Anita Desai",
+      "badge_number": "EMR-HYD-7701",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-02",
+    "username": "paramedic_a02",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A02",
+    "entity_id": "amb-02",
+    "metadata": {
+      "unit_code": "RESQ-A02",
+      "ambulance_id": "amb-02",
+      "ambulance_type": "BLS",
+      "driver_name": "K. Venu",
+      "paramedic_name": "Nurse Ravi Teja",
+      "badge_number": "EMR-HYD-7702",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-03",
+    "username": "paramedic_a03",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A03",
+    "entity_id": "amb-03",
+    "metadata": {
+      "unit_code": "RESQ-A03",
+      "ambulance_id": "amb-03",
+      "ambulance_type": "ALS",
+      "driver_name": "Md. Imran",
+      "paramedic_name": "Dr. John Mathew",
+      "badge_number": "EMR-HYD-7703",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-04",
+    "username": "paramedic_a04",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A04",
+    "entity_id": "amb-04",
+    "metadata": {
+      "unit_code": "RESQ-A04",
+      "ambulance_id": "amb-04",
+      "ambulance_type": "BLS",
+      "driver_name": "Rajesh G.",
+      "paramedic_name": "Nurse Lakshmi",
+      "badge_number": "EMR-HYD-7704",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-05",
+    "username": "paramedic_a05",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A05",
+    "entity_id": "amb-05",
+    "metadata": {
+      "unit_code": "RESQ-A05",
+      "ambulance_id": "amb-05",
+      "ambulance_type": "ALS",
+      "driver_name": "Balaji P.",
+      "paramedic_name": "Dr. Swathi K.",
+      "badge_number": "EMR-HYD-7705",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-06",
+    "username": "paramedic_a06",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A06",
+    "entity_id": "amb-06",
+    "metadata": {
+      "unit_code": "RESQ-A06",
+      "ambulance_id": "amb-06",
+      "ambulance_type": "BLS",
+      "driver_name": "Anand M.",
+      "paramedic_name": "Nurse Deepa",
+      "badge_number": "EMR-HYD-7706",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-07",
+    "username": "paramedic_a07",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A07",
+    "entity_id": "amb-07",
+    "metadata": {
+      "unit_code": "RESQ-A07",
+      "ambulance_id": "amb-07",
+      "ambulance_type": "ALS",
+      "driver_name": "Shiva K.",
+      "paramedic_name": "Dr. Farooq Khan",
+      "badge_number": "EMR-HYD-7707",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-08",
+    "username": "paramedic_a08",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A08",
+    "entity_id": "amb-08",
+    "metadata": {
+      "unit_code": "RESQ-A08",
+      "ambulance_id": "amb-08",
+      "ambulance_type": "BLS",
+      "driver_name": "Naveen B.",
+      "paramedic_name": "Nurse Sunita",
+      "badge_number": "EMR-HYD-7708",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-09",
+    "username": "paramedic_a09",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A09",
+    "entity_id": "amb-09",
+    "metadata": {
+      "unit_code": "RESQ-A09",
+      "ambulance_id": "amb-09",
+      "ambulance_type": "ALS",
+      "driver_name": "Ramesh T.",
+      "paramedic_name": "Dr. Karthik S.",
+      "badge_number": "EMR-HYD-7709",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-amb-10",
+    "username": "paramedic_a10",
+    "role": "ambulance",
+    "name": "Paramedic Unit RESQ-A10",
+    "entity_id": "amb-10",
+    "metadata": {
+      "unit_code": "RESQ-A10",
+      "ambulance_id": "amb-10",
+      "ambulance_type": "BLS",
+      "driver_name": "Sai Teja",
+      "paramedic_name": "Nurse Divya P.",
+      "badge_number": "EMR-HYD-7710",
+      "station": "Hyderabad Municipal Fleet Dispatch"
+    },
+    "defaultPass": "amb123"
+  },
+  {
+    "id": "usr-hosp-01",
+    "username": "hosp_osmania",
+    "role": "hospital",
+    "name": "Osmania General Hospital ER Desk",
+    "entity_id": "hosp-01",
+    "metadata": {
+      "hospital_id": "hosp-01",
+      "hospital_name": "Osmania General Hospital",
+      "zone_location": "Koti Central",
+      "medical_officer": "Dr. Venkat Rao",
+      "trauma_certification": "Level 1",
+      "emergency_desk_phone": "+91 040-24600121"
+    },
+    "defaultPass": "hosp123"
+  },
+  {
+    "id": "usr-hosp-02",
+    "username": "hosp_gandhi",
+    "role": "hospital",
+    "name": "Gandhi Hospital ER Desk",
+    "entity_id": "hosp-02",
+    "metadata": {
+      "hospital_id": "hosp-02",
+      "hospital_name": "Gandhi Hospital",
+      "zone_location": "Secunderabad Junction",
+      "medical_officer": "Dr. Sunitha Reddy",
+      "trauma_certification": "Level 1",
+      "emergency_desk_phone": "+91 040-24600121"
+    },
+    "defaultPass": "hosp123"
+  },
+  {
+    "id": "usr-hosp-03",
+    "username": "hosp_nims",
+    "role": "hospital",
+    "name": "Nizam's Institute of Medical Sciences (NIMS) ER Desk",
+    "entity_id": "hosp-03",
+    "metadata": {
+      "hospital_id": "hosp-03",
+      "hospital_name": "Nizam's Institute of Medical Sciences (NIMS)",
+      "zone_location": "Ameerpet Transit Hub",
+      "medical_officer": "Dr. Prakash Narayana",
+      "trauma_certification": "Level 2",
+      "emergency_desk_phone": "+91 040-24600121"
+    },
+    "defaultPass": "hosp123"
+  },
+  {
+    "id": "usr-hosp-04",
+    "username": "hosp_care",
+    "role": "hospital",
+    "name": "Care Hospital Banjara ER Desk",
+    "entity_id": "hosp-04",
+    "metadata": {
+      "hospital_id": "hosp-04",
+      "hospital_name": "Care Hospital Banjara",
+      "zone_location": "Banjara Hills",
+      "medical_officer": "Dr. Arvind Mehra",
+      "trauma_certification": "Level 2",
+      "emergency_desk_phone": "+91 040-24600121"
+    },
+    "defaultPass": "hosp123"
+  },
+  {
+    "id": "usr-hosp-05",
+    "username": "hosp_continental",
+    "role": "hospital",
+    "name": "Continental Hospital Gachibowli ER Desk",
+    "entity_id": "hosp-05",
+    "metadata": {
+      "hospital_id": "hosp-05",
+      "hospital_name": "Continental Hospital Gachibowli",
+      "zone_location": "Gachibowli Tech Park",
+      "medical_officer": "Dr. Shalini Prasad",
+      "trauma_certification": "Level 1",
+      "emergency_desk_phone": "+91 040-24600121"
+    },
+    "defaultPass": "hosp123"
+  },
+  {
+    "id": "usr-cmd-01",
+    "username": "command_admin",
+    "role": "command",
+    "name": "Municipal Emergency Director Rao",
+    "entity_id": "cmd-hq",
+    "metadata": {
+      "clearance_level": "Master Operator (Level 5)",
+      "department": "Greater Hyderabad Municipal Emergency Response (GHMC & Police 108)"
+    },
+    "defaultPass": "admin123"
+  },
+  {
+    "id": "usr-cmd-02",
+    "username": "dispatcher_hyd",
+    "role": "command",
+    "name": "Senior Dispatcher Fatima",
+    "entity_id": "cmd-cad",
+    "metadata": {
+      "clearance_level": "CAD Dispatcher (Level 3)",
+      "department": "Central Emergency CAD Desk"
+    },
+    "defaultPass": "admin123"
+  },
+  {
+    "id": "cit-mwehsuwy",
+    "username": "test_citizen_1771985873",
+    "role": "citizen",
+    "name": "Srinivas Rao",
+    "entity_id": "cit-mwehsuwy",
+    "metadata": {
+      "blood_group": "B+",
+      "allergies": "None",
+      "address": "",
+      "emergency_contact_name": "Lakshmi Rao",
+      "emergency_contact_phone": "9876500002"
+    },
+    "defaultPass": "citizen123"
+  }
+]

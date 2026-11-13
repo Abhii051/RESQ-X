@@ -12,21 +12,26 @@ import {
   fetchDatabaseStats
 } from '../services/api';
 
+import defaultDemoUsers from '../demoUsers.json';
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredUser());
   const [token, setToken] = useState(getStoredToken());
-  const [demoUsers, setDemoUsers] = useState([]);
+  // Pre-seed synchronously so 1-click profiles are instantly visible on standalone Vercel
+  const [demoUsers, setDemoUsers] = useState(defaultDemoUsers);
   const [dbStats, setDbStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Load initial demo users and verify session
   useEffect(() => {
     async function initAuth() {
       try {
         const demos = await fetchDemoUsers().catch(() => []);
-        setDemoUsers(demos);
+        if (demos && demos.length > 0) {
+          setDemoUsers(demos);
+        }
 
         const stats = await fetchDatabaseStats().catch(() => null);
         setDbStats(stats);
