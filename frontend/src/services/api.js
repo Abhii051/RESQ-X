@@ -232,8 +232,8 @@ export async function applyPrepositioning(ambulanceId, targetZoneId) {
   return res.json();
 }
 
-export async function fetchDispatchComparison() {
-  const res = await fetch(`${API_BASE}/dispatch/compare`, { headers: getAuthHeaders() });
+export async function fetchDispatchComparison(scenario = "stress", load = "peak") {
+  const res = await fetch(`${API_BASE}/dispatch/compare?scenario=${scenario}&load=${load}`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to fetch dispatch comparison");
   return res.json();
 }

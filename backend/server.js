@@ -468,13 +468,13 @@ app.post('/api/prepositioning/apply', (req, res) => {
   res.json(result);
 });
 
+// ?scenario=stress (default): seeded rush-hour simulation at 4 load levels
+// ?scenario=live: replays the incidents currently on the dashboard
 app.get('/api/dispatch/compare', (req, res) => {
-  const result = DispatchComparator.compareScenario(
-    appState.incidents,
-    appState.ambulances,
-    appState.hospitals,
-    appState.zones
-  );
+  const scenario = req.query.scenario || "stress";
+  const result = scenario === "live"
+    ? DispatchComparator.compareScenario(appState.incidents, appState.ambulances, appState.hospitals, appState.zones)
+    : DispatchComparator.runLoadSweep({ headline: req.query.load || "peak" });
   res.json(result);
 });
 
