@@ -27,6 +27,7 @@ import { submitEmergencyReport, analyzeTextAI, fetchCitizenIncidents } from '../
 import { useAuth } from '../context/AuthContext';
 import RoleAuthGate from '../components/RoleAuthGate';
 import { playAlertSound, playSuccessChime, playBlip } from '../utils/soundEffects';
+import CitizenTrackingModal from '../components/CitizenTrackingModal';
 
 
 const QUICK_EMERGENCIES = [
@@ -89,6 +90,7 @@ export default function CitizenPortalView({ state, onRefresh }) {
   const [unconscious, setUnconscious] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeSOS, setActiveSOS] = useState(null);
+  const [showLiveTracking, setShowLiveTracking] = useState(false);
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
   const [aiPreview, setAiPreview] = useState(null);
   const [locationShared, setLocationShared] = useState(false);
@@ -216,6 +218,7 @@ export default function CitizenPortalView({ state, onRefresh }) {
       });
 
       setActiveSOS(res.incident);
+      setShowLiveTracking(true);
       setDescription("");
       loadHistory();
       if (onRefresh) onRefresh();
@@ -248,6 +251,7 @@ export default function CitizenPortalView({ state, onRefresh }) {
         image_data: uploadedPhoto
       });
       setActiveSOS(res.incident);
+      setShowLiveTracking(true);
       loadHistory();
       if (onRefresh) onRefresh();
     } catch (err) {
@@ -583,7 +587,14 @@ export default function CitizenPortalView({ state, onRefresh }) {
               </div>
 
               {activeSOS && (
-                <div className="text-right">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowLiveTracking(true)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+                  >
+                    <Ambulance className="w-3.5 h-3.5" />
+                    <span>Open Live Map</span>
+                  </button>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase ${
                     activeSOS.severity === 'Critical' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
                   }`}>
@@ -728,7 +739,10 @@ export default function CitizenPortalView({ state, onRefresh }) {
               {(citizenDbHistory.length > 0 ? citizenDbHistory : incidents).slice(0, 5).map((inc) => (
                 <div
                   key={inc.id}
-                  onClick={() => setActiveSOS(inc)}
+                  onClick={() => {
+                    setActiveSOS(inc);
+                    setShowLiveTracking(true);
+                  }}
                   className={`p-2.5 rounded-xl border text-xs cursor-pointer transition flex items-center justify-between ${
                     activeSOS?.id === inc.id ? 'border-teal-400 bg-teal-50/40 shadow-xs' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                   }`}
@@ -753,6 +767,17 @@ export default function CitizenPortalView({ state, onRefresh }) {
           </div>
         </div>
       </div>
+
+      {/* Full-Screen Live Ambulance Tracking Modal */}
+      {showLiveTracking && activeSOS && (
+        <CitizenTrackingModal
+          incident={activeSOS}
+          ambulances={ambulances}
+          hospitals={hospitals}
+          zones={zones}
+          onClose={() => setShowLiveTracking(false)}
+        />
+      )}
     </div>
   );
 }
