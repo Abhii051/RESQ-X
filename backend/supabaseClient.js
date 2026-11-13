@@ -12,6 +12,7 @@ let supabaseInstance = null;
 let currentConfig = {
   url: process.env.SUPABASE_URL || null,
   anonKey: process.env.SUPABASE_ANON_KEY || null,
+  serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || null,
   status: 'Unconfigured'
 };
 
@@ -23,15 +24,16 @@ try {
     if (parsed.url && parsed.anonKey) {
       currentConfig.url = parsed.url;
       currentConfig.anonKey = parsed.anonKey;
+      currentConfig.serviceKey = parsed.serviceKey || null;
     }
   }
 } catch (e) {
   console.warn("[Supabase] Failed to read saved config:", e.message);
 }
 
-export function initSupabase(url = null, anonKey = null) {
+export function initSupabase(url = null, anonKey = null, serviceKey = null) {
   const targetUrl = url || currentConfig.url || process.env.SUPABASE_URL;
-  const targetKey = anonKey || currentConfig.anonKey || process.env.SUPABASE_ANON_KEY;
+  const targetKey = serviceKey || currentConfig.serviceKey || process.env.SUPABASE_SERVICE_ROLE_KEY || anonKey || currentConfig.anonKey || process.env.SUPABASE_ANON_KEY;
 
   if (targetUrl && targetKey) {
     try {
@@ -39,7 +41,8 @@ export function initSupabase(url = null, anonKey = null) {
         auth: { persistSession: false }
       });
       currentConfig.url = targetUrl;
-      currentConfig.anonKey = targetKey;
+      currentConfig.anonKey = anonKey || currentConfig.anonKey;
+      currentConfig.serviceKey = serviceKey || currentConfig.serviceKey;
       currentConfig.status = 'Connected';
       console.log(`[Supabase] Cloud client initialized for project: ${targetUrl.replace(/(https?:\/\/)([^.]+)(.*)/, '$1$2$3')}`);
       return supabaseInstance;
@@ -91,22 +94,23 @@ export async function testSupabaseConnection(url = null, anonKey = null) {
   }
 }
 
-export function saveSupabaseConfig(url, anonKey) {
+export function saveSupabaseConfig(url, anonKey, serviceKey = null) {
   if (!url || !anonKey) {
-    throw new Error("Both Supabase URL and Anon Key are required");
+    throw new Error("Both Supabase URL and Key are required");
   }
 
   const cleanUrl = url.trim();
   const cleanKey = anonKey.trim();
+  const cleanService = serviceKey ? serviceKey.trim() : null;
 
-  initSupabase(cleanUrl, cleanKey);
+  initSupabase(cleanUrl, cleanKey, cleanService);
 
   try {
     const dataDir = path.dirname(CONFIG_FILE);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ url: cleanUrl, anonKey: cleanKey }, null, 2), 'utf8');
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ url: cleanUrl, anonKey: cleanKey, serviceKey: cleanService }, null, 2), 'utf8');
   } catch (e) {
     console.warn("[Supabase] Failed to write config file:", e.message);
   }
