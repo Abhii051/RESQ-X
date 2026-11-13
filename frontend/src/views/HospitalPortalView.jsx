@@ -23,6 +23,7 @@ import {
 import { updateHospitalCapacity, triggerSimulationEvent } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import RoleAuthGate from '../components/RoleAuthGate';
+import HospitalTrackingModal from '../components/HospitalTrackingModal';
 
 export default function HospitalPortalView({ state, onRefresh }) {
   const { user, isAuthenticated, logout } = useAuth();
@@ -34,6 +35,8 @@ export default function HospitalPortalView({ state, onRefresh }) {
 
   const [selectedHospId, setSelectedHospId] = useState(user?.entity_id || hospitals[0]?.id || "hosp-01");
   const [updating, setUpdating] = useState(false);
+  const [showLiveTracking, setShowLiveTracking] = useState(false);
+  const [activeTrackingIncident, setActiveTrackingIncident] = useState(null);
   const [acceptedCases, setAcceptedCases] = useState({});
 
   useEffect(() => {
@@ -456,27 +459,37 @@ export default function HospitalPortalView({ state, onRefresh }) {
                           {inc.requires_icu ? '🚨 ICU Bed Reserved' : 'Standard Trauma Bed'}
                         </span>
 
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleCaseAction(inc.id, 'diverted')}
-                            disabled={isDiverted}
-                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
-                              isDiverted
-                                ? 'bg-red-600 text-white border-red-700'
-                                : 'bg-white border-slate-300 text-red-700 hover:bg-red-50'
-                            }`}
-                          >
-                            {isDiverted ? 'Diverted' : 'Divert Case'}
-                          </button>
-                          <button
-                            onClick={() => handleCaseAction(inc.id, 'accepted')}
-                            disabled={isAccepted}
-                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
-                              isAccepted
-                                ? 'bg-emerald-600 text-white border-emerald-700'
-                                : 'bg-[#17324D] text-white border-[#17324D] hover:bg-[#204569]'
-                            }`}
-                          >
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                setActiveTrackingIncident(inc);
+                                setShowLiveTracking(true);
+                              }}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-2xs"
+                            >
+                              <Ambulance className="w-3.5 h-3.5" />
+                              <span>Track Inbound</span>
+                            </button>
+                            <button
+                              onClick={() => handleCaseAction(inc.id, 'diverted')}
+                              disabled={isDiverted}
+                              className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                                isDiverted
+                                  ? 'bg-red-600 text-white border-red-700'
+                                  : 'bg-white border-slate-300 text-red-700 hover:bg-red-50'
+                              }`}
+                            >
+                              {isDiverted ? 'Diverted' : 'Divert Case'}
+                            </button>
+                            <button
+                              onClick={() => handleCaseAction(inc.id, 'accepted')}
+                              disabled={isAccepted}
+                              className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                                isAccepted
+                                  ? 'bg-emerald-600 text-white border-emerald-700'
+                                  : 'bg-[#17324D] text-white border-[#17324D] hover:bg-[#204569]'
+                              }`}
+                            >
                             {isAccepted ? 'Case Accepted' : 'Accept Case'}
                           </button>
                         </div>
@@ -489,6 +502,22 @@ export default function HospitalPortalView({ state, onRefresh }) {
           </div>
         </div>
       </div>
+
+      {/* Live Hospital Inbound Ambulance Tracking Modal */}
+      {showLiveTracking && currentHosp && (
+        <HospitalTrackingModal
+          hospital={currentHosp}
+          incident={activeTrackingIncident || incomingIncidents[0]}
+          ambulance={ambulances.find(a => a.id === (activeTrackingIncident || incomingIncidents[0])?.assigned_ambulance_id) || ambulances[0]}
+          zones={state?.zones || []}
+          onClose={() => setShowLiveTracking(false)}
+          onPrepareBed={() => {
+            if (activeTrackingIncident) {
+              handleCaseAction(activeTrackingIncident.id, 'accepted');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

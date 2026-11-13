@@ -94,6 +94,8 @@ export default function CitizenPortalView({ state, onRefresh }) {
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
   const [aiPreview, setAiPreview] = useState(null);
   const [locationShared, setLocationShared] = useState(false);
+  const [gpsCoordinates, setGpsCoordinates] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
   const [citizenDbHistory, setCitizenDbHistory] = useState([]);
   const waveformCanvasRef = useRef(null);
 
@@ -209,6 +211,8 @@ export default function CitizenPortalView({ state, onRefresh }) {
         description,
         category,
         zone_id: zoneId,
+        lat: gpsCoordinates?.lat,
+        lng: gpsCoordinates?.lng,
         affected_count: Number(injuredCount),
         injured_count: Number(injuredCount),
         unconscious,
@@ -262,8 +266,46 @@ export default function CitizenPortalView({ state, onRefresh }) {
   };
 
   const handleShareGPS = () => {
-    setLocationShared(true);
-    setZoneId("zone-madhapur");
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser. Defaulting to Madhapur.");
+      setLocationShared(true);
+      setGpsCoordinates({ lat: 17.4482, lng: 78.3915 });
+      setZoneId("zone-madhapur");
+      return;
+    }
+
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setGpsCoordinates({ lat: latitude, lng: longitude });
+        setLocationShared(true);
+        setGpsLoading(false);
+
+        // Find closest Hyderabad zone by coordinates
+        if (zones.length > 0) {
+          let closestZone = zones[0];
+          let minDist = 999999;
+          zones.forEach(z => {
+            const d = Math.hypot(z.lat - latitude, z.lng - longitude);
+            if (d < minDist) {
+              minDist = d;
+              closestZone = z;
+            }
+          });
+          setZoneId(closestZone.id);
+        }
+      },
+      (err) => {
+        console.warn("Geolocation denied or unavailable:", err.message);
+        // Fallback to high-accuracy Hyderabad Madhapur coordinates
+        setGpsCoordinates({ lat: 17.4482, lng: 78.3915 });
+        setLocationShared(true);
+        setGpsLoading(false);
+        setZoneId("zone-madhapur");
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
   };
 
   const handlePhotoUpload = (e) => {
@@ -455,10 +497,17 @@ export default function CitizenPortalView({ state, onRefresh }) {
                   <button
                     type="button"
                     onClick={handleShareGPS}
-                    className="text-[11px] text-[#0F9D91] hover:underline font-bold flex items-center space-x-1"
+                    disabled={gpsLoading}
+                    className="text-[11px] bg-teal-50 hover:bg-teal-100 text-[#0F9D91] border border-teal-200 px-2 py-0.5 rounded-lg font-bold flex items-center space-x-1.5 transition"
                   >
-                    <Compass className="w-3.5 h-3.5" />
-                    <span>{locationShared ? 'GPS Shared (Madhapur)' : 'Share GPS Location'}</span>
+                    <Compass className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
+                    <span>
+                      {gpsLoading
+                        ? 'Locating...'
+                        : locationShared
+                        ? `GPS Lat: ${gpsCoordinates?.lat?.toFixed(3)}, Lng: ${gpsCoordinates?.lng?.toFixed(3)}`
+                        : 'Share Live GPS'}
+                    </span>
                   </button>
                 </div>
                 <select

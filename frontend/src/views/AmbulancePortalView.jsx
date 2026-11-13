@@ -24,6 +24,7 @@ import {
 import { updateAmbulanceStatus, triggerSimulationEvent, fetchRadioMessages, sendRadioMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import RoleAuthGate from '../components/RoleAuthGate';
+import AmbulanceTrackingModal from '../components/AmbulanceTrackingModal';
 
 const TURN_BY_TURN_STEPS = [
   "Proceed south on Outer Ring Road toward Cyber Towers (1.2 km)",
@@ -42,6 +43,7 @@ export default function AmbulancePortalView({ state, onRefresh }) {
 
   const [selectedAmbId, setSelectedAmbId] = useState(user?.entity_id || ambulances[0]?.id || "amb-01");
   const [updating, setUpdating] = useState(false);
+  const [showLiveTracking, setShowLiveTracking] = useState(false);
   const [radioMsg, setRadioMsg] = useState("");
   const [radioHistory, setRadioHistory] = useState([]);
   const [equipmentChecks, setEquipmentChecks] = useState({
@@ -274,9 +276,18 @@ export default function AmbulancePortalView({ state, onRefresh }) {
                     Active Mission: {assignedInc.title}
                   </h3>
                 </div>
-                <span className="text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase">
-                  {assignedInc.severity} Priority
-                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowLiveTracking(true)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Live GPS Nav</span>
+                  </button>
+                  <span className="text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase">
+                    {assignedInc.severity} Priority
+                  </span>
+                </div>
               </div>
 
               {/* Patient Clinical Profile */}
@@ -486,6 +497,18 @@ export default function AmbulancePortalView({ state, onRefresh }) {
           </div>
         </div>
       </div>
+
+      {/* Live Ambulance En Route Tracking Modal */}
+      {showLiveTracking && currentAmb && (
+        <AmbulanceTrackingModal
+          ambulance={currentAmb}
+          incident={assignedInc}
+          hospital={hospitals.find(h => h.id === currentAmb?.target_hospital_id || h.id === assignedInc?.assigned_hospital_id)}
+          zones={state?.zones || []}
+          onClose={() => setShowLiveTracking(false)}
+          onUpdateStatus={handleUpdateStatus}
+        />
+      )}
     </div>
   );
 }
