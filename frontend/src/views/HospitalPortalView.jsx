@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Ambulance,
@@ -15,18 +15,46 @@ import {
   Stethoscope,
   XCircle,
   BarChart3,
-  PhoneCall
+  PhoneCall,
+  User,
+  LogOut,
+  Lock
 } from 'lucide-react';
 import { updateHospitalCapacity, triggerSimulationEvent } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import RoleAuthGate from '../components/RoleAuthGate';
 
 export default function HospitalPortalView({ state, onRefresh }) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const isHospital = isAuthenticated && user?.role === 'hospital';
+
   const hospitals = state?.hospitals || [];
   const incidents = state?.incidents || [];
   const ambulances = state?.ambulances || [];
 
-  const [selectedHospId, setSelectedHospId] = useState(hospitals[0]?.id || "hosp-01");
+  const [selectedHospId, setSelectedHospId] = useState(user?.entity_id || hospitals[0]?.id || "hosp-01");
   const [updating, setUpdating] = useState(false);
   const [acceptedCases, setAcceptedCases] = useState({});
+
+  useEffect(() => {
+    if (user?.entity_id) {
+      setSelectedHospId(user.entity_id);
+    }
+  }, [user]);
+
+  // If not authenticated as hospital, render Hospital Authentication Gate
+  if (!isHospital) {
+    return (
+      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <RoleAuthGate
+          targetRole="hospital"
+          title="Hospital Emergency & Trauma Center Portal"
+          subtitle="Authenticate using your hospital medical officer credentials to monitor live bed inventory, receive advance ambulance telemetry, and triage incoming trauma cases."
+          icon={Building2}
+        />
+      </div>
+    );
+  }
 
   const currentHosp = hospitals.find(h => h.id === selectedHospId) || hospitals[0];
 
@@ -88,130 +116,368 @@ export default function HospitalPortalView({ state, onRefresh }) {
     ? Math.round(((currentHosp.icu_total - currentHosp.icu_available) / Math.max(1, currentHosp.icu_total)) * 100)
     : 0;
 
-  const isSaturated = currentHosp?.icu_available === 0 || currentHosp?.operational_status === 'Constrained';
-
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Hospital ER Banner */}
-      <div className="bg-gradient-to-r from-[#0F9D91] via-teal-700 to-[#17324D] text-white p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2 text-xs font-bold text-teal-200 uppercase tracking-wider">
-            <Activity className="w-4 h-4 text-teal-200" />
-            <span>Emergency Department (ED) & Resuscitation Reception Console</span>
+      {/* Verified Medical Facility Identity Banner */}
+      <div className="bg-gradient-to-r from-purple-950 via-[#17324D] to-slate-900 text-white p-4 md:p-5 rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-md border border-purple-800/40">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-purple-600/30 border border-purple-400/40 flex items-center justify-center font-bold text-purple-300 shadow-inner">
+            <Building2 className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-black mt-1 flex items-center space-x-2.5">
-            <Building2 className="w-6 h-6 text-teal-200" />
-            <span>{currentHosp?.name || 'Osmania General Hospital'}</span>
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
-              isSaturated ? 'bg-red-600 text-white' : 'bg-white/20 text-teal-100'
-            }`}>
-              {isSaturated ? 'ICU Saturation Alert' : 'Operational Readiness'}
-            </span>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-extrabold text-base tracking-tight">{user.name}</span>
+              <span className="text-[10px] bg-purple-500/30 text-purple-200 border border-purple-400/30 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {user.metadata?.trauma_certification || 'Level 1 Trauma'} • {currentHosp.name}
+              </span>
+            </div>
+            <div className="text-[11px] text-purple-200/80 flex flex-wrap gap-x-3.5 gap-y-1 mt-1 font-medium">
+              <span>Medical Officer: <strong className="text-white">{user.metadata?.medical_officer || 'Chief of ER'}</strong></span>
+              <span>Zone: <strong className="text-white">{user.metadata?.zone_location || currentHosp.zone_id}</strong></span>
+              <span>Direct Hotline: <strong className="text-white font-mono">{user.phone || '+91 040-24600121'}</strong></span>
+              <span className="flex items-center space-x-1 text-emerald-400">
+                <Lock className="w-3 h-3" />
+                <span>Console Authenticated & Locked</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={logout}
+          className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 self-start md:self-center border border-white/15"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out / Switch Center</span>
+        </button>
+      </div>
+
+      {/* Hospital Banner & Facility Switcher */}
+      <div className="bg-[#17324D] text-white p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-slate-700">
+        <div>
+          <div className="flex items-center space-x-2 text-xs font-bold text-teal-300 uppercase tracking-wider">
+            <Building2 className="w-4 h-4 text-teal-300" />
+            <span>Emergency Department (ED) & ICU Capacity Management</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-black mt-1">
+            {currentHosp?.name} — {currentHosp?.trauma_level === 1 ? 'Trauma Center Level 1' : 'Level 2 Trauma Hub'}
           </h1>
-          <p className="text-xs text-teal-100 mt-0.5">
-            Real-time inbound ambulance pipeline, ICU resuscitation bed telemetry, on-duty specialist verification, and diversion gates.
+          <p className="text-xs text-slate-300">
+            Zone: {currentHosp?.zone_id || 'Koti Central'} • Status: {currentHosp?.operational_status} • Cath Lab: Ready
           </p>
         </div>
 
-        {/* Hospital Switcher */}
-        <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/20 flex items-center space-x-2 text-xs shrink-0">
-          <span className="text-teal-100 font-medium">Select Hospital:</span>
+        {/* Facility Switcher */}
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-slate-300 font-bold hidden sm:inline">Medical Facility:</span>
           <select
             value={selectedHospId}
             onChange={(e) => setSelectedHospId(e.target.value)}
-            className="bg-[#17324D] text-white font-bold p-1.5 rounded-lg border border-teal-300/40 text-xs outline-none cursor-pointer"
+            className="bg-slate-800 text-white border border-slate-600 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-hidden"
           >
-            {hospitals.map(h => (
-              <option key={h.id} value={h.id}>{h.name}</option>
+            {hospitals.map((hosp) => (
+              <option key={hosp.id} value={hosp.id}>
+                {hosp.name} (ICU: {hosp.icu_available}/{hosp.icu_total})
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Main Grid: Incoming Pipeline Left (2 Cols), Capacity & Specialists Right (1 Col) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Inbound Patients & Inflow Pipeline */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-[#E3E9EF] p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center space-x-2">
-                <Ambulance className="w-5 h-5 text-blue-600" />
-                <h2 className="text-sm font-bold text-[#17324D] uppercase tracking-wider">
-                  Inbound Patients & Emergency Pipeline ({incomingIncidents.length})
-                </h2>
+      {/* Main Grid: Left = Bed Controls, Right = Incoming Ambulance Queue */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column (6 Cols): Live Bed Inventory & Saturation Crisis */}
+        <div className="lg:col-span-6 space-y-5">
+          {/* Real-time ICU & General Bed Controls (Feature 1) */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <span className="text-xs font-extrabold text-[#17324D] uppercase tracking-wider block">
+                  Live Bed Capacity Registry
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Instant telemetry broadcast across entire Hyderabad 108 network
+                </span>
               </div>
-              <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2.5 py-0.5 rounded-full">
-                Pre-Alert Reception Active
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
+                currentHosp?.icu_available === 0 ? 'bg-red-100 text-red-800 animate-pulse' :
+                currentHosp?.icu_available <= 2 ? 'bg-amber-100 text-amber-800' :
+                'bg-emerald-100 text-emerald-800'
+              }`}>
+                {currentHosp?.icu_available === 0 ? 'ICU Saturation (0 Beds)' : `${currentHosp?.icu_available} ICU Available`}
               </span>
             </div>
 
+            {/* Bed Adjustment Counters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* ICU Beds Card */}
+              <div className="p-4 rounded-xl border border-red-200 bg-red-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-red-950">Intensive Care (ICU)</span>
+                  <span className="text-[10px] text-red-600 font-bold uppercase">Critical Life Support</span>
+                </div>
+
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-3xl font-black text-red-900 font-mono">
+                      {currentHosp?.icu_available}
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold"> / {currentHosp?.icu_total} Total</span>
+                  </div>
+                  <span className="text-xs font-bold text-red-700 font-mono">{icuPct}% Occupied</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-2 bg-red-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-red-600 transition-all duration-300"
+                    style={{ width: `${Math.min(100, icuPct)}%` }}
+                  />
+                </div>
+
+                {/* +1 / -1 Buttons */}
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    onClick={() => handleAdjustBed('icu', -1)}
+                    disabled={updating || currentHosp?.icu_available <= 0}
+                    className="flex-1 py-1.5 bg-white border border-red-300 hover:bg-red-100 text-red-800 font-bold rounded-lg text-xs flex items-center justify-center space-x-1 transition disabled:opacity-40"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span>Admit Patient (-1)</span>
+                  </button>
+                  <button
+                    onClick={() => handleAdjustBed('icu', 1)}
+                    disabled={updating || currentHosp?.icu_available >= currentHosp?.icu_total}
+                    className="flex-1 py-1.5 bg-white border border-red-300 hover:bg-red-100 text-red-800 font-bold rounded-lg text-xs flex items-center justify-center space-x-1 transition disabled:opacity-40"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Discharge (+1)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* General Beds Card */}
+              <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-teal-950">General Inpatient Ward</span>
+                  <span className="text-[10px] text-teal-600 font-bold uppercase">Standard Care</span>
+                </div>
+
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-3xl font-black text-teal-900 font-mono">
+                      {currentHosp?.general_available}
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold"> / {currentHosp?.general_total} Total</span>
+                  </div>
+                  <span className="text-xs font-bold text-teal-700 font-mono">
+                    {Math.round(((currentHosp?.general_total - currentHosp?.general_available) / Math.max(1, currentHosp?.general_total)) * 100)}%
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-2 bg-teal-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#0F9D91] transition-all duration-300"
+                    style={{
+                      width: `${Math.round(((currentHosp?.general_total - currentHosp?.general_available) / Math.max(1, currentHosp?.general_total)) * 100)}%`
+                    }}
+                  />
+                </div>
+
+                {/* +1 / -1 Buttons */}
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    onClick={() => handleAdjustBed('general', -1)}
+                    disabled={updating || currentHosp?.general_available <= 0}
+                    className="flex-1 py-1.5 bg-white border border-teal-300 hover:bg-teal-100 text-teal-800 font-bold rounded-lg text-xs flex items-center justify-center space-x-1 transition disabled:opacity-40"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span>Admit Patient (-1)</span>
+                  </button>
+                  <button
+                    onClick={() => handleAdjustBed('general', 1)}
+                    disabled={updating || currentHosp?.general_available >= currentHosp?.general_total}
+                    className="flex-1 py-1.5 bg-white border border-teal-300 hover:bg-teal-100 text-teal-800 font-bold rounded-lg text-xs flex items-center justify-center space-x-1 transition disabled:opacity-40"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Discharge (+1)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Operational Status Toggles */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-700">Facility Operational Status:</span>
+              <div className="flex space-x-1.5">
+                {["Operational", "Full Capacity", "Diverting"].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => handleToggleStatus(st)}
+                    disabled={updating}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition ${
+                      currentHosp?.operational_status === st
+                        ? 'bg-[#17324D] text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ICU Saturation Crisis Trigger (Problem Statement 10 Shock Test) */}
+          <div className="bg-red-50 p-5 rounded-2xl border border-red-200 shadow-2xs space-y-3">
+            <div className="flex items-center space-x-2 text-red-800">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+              <h3 className="font-extrabold text-xs uppercase tracking-wider">
+                ICU Saturation Crisis Shock Test
+              </h3>
+            </div>
+            <p className="text-[11px] text-red-700 leading-relaxed">
+              Instantly simulate 0 available ICU beds at this hospital. The RESQ-X dynamic rerouting engine will divert all inbound ambulances to secondary trauma centers before they reach this facility.
+            </p>
+
+            <button
+              onClick={handleDeclareSaturation}
+              disabled={updating || currentHosp?.icu_available === 0}
+              className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <ShieldAlert className="w-4 h-4 text-amber-300" />
+              <span>Declare 0 ICU Beds Available (1-Click Shock)</span>
+            </button>
+          </div>
+
+          {/* Specialist Readiness Panel */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-3 text-xs">
+            <div className="flex items-center justify-between border-b pb-2">
+              <span className="font-bold text-[#17324D] uppercase tracking-wider flex items-center space-x-1.5">
+                <Stethoscope className="w-4 h-4 text-purple-600" />
+                <span>On-Duty Clinical Specialties & Readiness</span>
+              </span>
+              <span className="text-[10px] text-emerald-700 bg-emerald-50 font-bold px-2 py-0.5 rounded">
+                All On Call
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11.5px]">
+              {[
+                { name: "Trauma Surgery", status: "Active", doctor: "Dr. Venkat Rao" },
+                { name: "Interventional Cardiology", status: "Ready", doctor: "Dr. K. Srinivas" },
+                { name: "Neurology & Stroke", status: "Active", doctor: "Dr. P. Sunitha" },
+                { name: "Orthopedic Emergency", status: "Ready", doctor: "Dr. M. Farooq" },
+              ].map((s, idx) => (
+                <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-slate-800">{s.name}</strong>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
+                      {s.status}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block">{s.doctor}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (6 Cols): Incoming Ambulance Pipeline & Patient Reception */}
+        <div className="lg:col-span-6 space-y-5">
+          <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2">
+                <Ambulance className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h3 className="font-extrabold text-[#17324D] text-sm">
+                    Inbound Ambulance Pipeline
+                  </h3>
+                  <span className="text-[11px] text-slate-500">
+                    Real-time clinical ETA and triage pre-notifications
+                  </span>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full font-mono">
+                {incomingIncidents.length} Inbound
+              </span>
+            </div>
+
+            {/* Inbound Patients List */}
             {incomingIncidents.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 space-y-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                <strong className="text-sm font-bold text-slate-700 block">No Inbound Emergency Transfers</strong>
-                <p>All incoming cases for {currentHosp?.name} are currently settled or dispatched to other facilities.</p>
+              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                <p>No inbound emergency patients currently dispatched to {currentHosp.name}.</p>
+                <p className="text-[11px] text-slate-400">
+                  New emergency dispatches from the Citizen Portal will automatically appear here.
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {incomingIncidents.map((inc) => {
-                  const amb = ambulances.find(a => a.id === inc.assigned_ambulance_id);
-                  const caseDecision = acceptedCases[inc.id];
+                  const assignedAmb = ambulances.find(a => a.id === inc.assigned_ambulance_id);
+                  const isAccepted = acceptedCases[inc.id] === 'accepted';
+                  const isDiverted = acceptedCases[inc.id] === 'diverted';
 
                   return (
                     <div
                       key={inc.id}
-                      className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition space-y-3 text-xs"
+                      className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200/60 pb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="bg-red-600 text-white font-bold text-[10px] px-2 py-0.5 rounded uppercase">
-                            {inc.severity} Priority
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <strong className="text-xs font-bold text-[#17324D]">{inc.title}</strong>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
+                              inc.severity === 'Critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {inc.severity}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 block mt-0.5 font-mono">
+                            Vehicle: {assignedAmb?.code || 'ALS Unit'} • ETA: ~{assignedAmb?.eta_minutes || 4.2} mins
                           </span>
-                          <strong className="text-sm font-bold text-[#17324D]">{inc.title}</strong>
                         </div>
 
-                        <div className="flex items-center space-x-2 text-slate-600">
-                          <Clock className="w-3.5 h-3.5 text-blue-600" />
-                          <span>ETA: <strong className="font-mono text-blue-700">{amb?.eta_minutes || 4.2} mins</strong></span>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Status</span>
+                          <span className="text-xs font-bold text-blue-700">{inc.status}</span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600">
-                        <div>Unit: <strong className="text-blue-800">{amb?.code || 'Dispatched ALS'}</strong> ({amb?.type})</div>
-                        <div>Casualties: <strong className="text-red-700">{inc.injured_count} Injured ({inc.unconscious ? 'Unconscious' : 'Conscious'})</strong></div>
-                        <div>Required Bay: <strong className="text-teal-800">{inc.requires_icu ? 'Cardiac/Trauma ICU' : 'General ER'}</strong></div>
-                      </div>
-
-                      <p className="text-[11px] text-slate-500 italic bg-white p-2 rounded-lg border border-slate-200">
-                        "{inc.description}"
+                      {/* Clinical requirements summary */}
+                      <p className="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-slate-100 leading-relaxed">
+                        {inc.ai_reasoning || inc.description}
                       </p>
 
-                      {/* Accept or Divert Buttons (Feature 9) */}
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-200">
-                        <span className="text-[10px] text-slate-400 font-medium">ED Reception Decision:</span>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleCaseAction(inc.id, 'accepted')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${
-                              caseDecision === 'accepted'
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>{caseDecision === 'accepted' ? 'Case Accepted' : 'Accept Case'}</span>
-                          </button>
+                      <div className="flex items-center justify-between pt-1 text-xs">
+                        <span className="text-[11px] text-slate-600">
+                          {inc.requires_icu ? '🚨 ICU Bed Reserved' : 'Standard Trauma Bed'}
+                        </span>
 
+                        <div className="flex space-x-2">
                           <button
                             onClick={() => handleCaseAction(inc.id, 'diverted')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${
-                              caseDecision === 'diverted'
-                                ? 'bg-red-600 text-white shadow-xs'
-                                : 'bg-red-50 text-red-800 border border-red-200 hover:bg-red-100'
+                            disabled={isDiverted}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                              isDiverted
+                                ? 'bg-red-600 text-white border-red-700'
+                                : 'bg-white border-slate-300 text-red-700 hover:bg-red-50'
                             }`}
                           >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>{caseDecision === 'diverted' ? 'Divert Initiated' : 'Divert Patient'}</span>
+                            {isDiverted ? 'Diverted' : 'Divert Case'}
+                          </button>
+                          <button
+                            onClick={() => handleCaseAction(inc.id, 'accepted')}
+                            disabled={isAccepted}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                              isAccepted
+                                ? 'bg-emerald-600 text-white border-emerald-700'
+                                : 'bg-[#17324D] text-white border-[#17324D] hover:bg-[#204569]'
+                            }`}
+                          >
+                            {isAccepted ? 'Case Accepted' : 'Accept Case'}
                           </button>
                         </div>
                       </div>
@@ -220,171 +486,6 @@ export default function HospitalPortalView({ state, onRefresh }) {
                 })}
               </div>
             )}
-          </div>
-
-          {/* Emergency Saturation Chaos Simulation Trigger (Feature 11) */}
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center space-x-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Hospital Capacity Exhaustion Simulation</span>
-              </div>
-              <h4 className="text-sm font-black text-amber-950 mt-0.5">Declare ICU Saturation (0 Beds Available)</h4>
-              <p className="text-[11px] text-amber-900 mt-0.5">
-                Simulate critical bed depletion at {currentHosp?.name}. The RESQ-X network will immediately trigger
-                automated hospital diversion, protecting incoming cardiac patients and rerouting to nearby facilities.
-              </p>
-            </div>
-
-            <button
-              onClick={handleDeclareSaturation}
-              disabled={updating || currentHosp?.icu_available === 0}
-              className="px-5 py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md shadow-amber-900/20 transition flex items-center space-x-2 shrink-0"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>Declare 0 ICU Beds (Divert)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right Col: Live Bed Capacity Adjusters & Specialist Readiness */}
-        <div className="space-y-6">
-          {/* Bed & ICU Capacity Controls (Features 3, 4, 10) */}
-          <div className="bg-white rounded-2xl border border-[#E3E9EF] p-5 shadow-2xs space-y-4 text-xs">
-            <h3 className="text-xs font-bold text-[#17324D] uppercase tracking-wider pb-2 border-b flex items-center justify-between">
-              <span>Live Emergency Bed Controls</span>
-              <span className="text-[10px] text-slate-400">Interactive Adjusters</span>
-            </h3>
-
-            {/* ICU Beds Adjuster */}
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-slate-800 text-xs">ICU Resuscitation Beds:</span>
-                <span className={`font-mono font-black text-sm ${currentHosp?.icu_available === 0 ? 'text-red-600' : 'text-[#0F9D91]'}`}>
-                  {currentHosp?.icu_available} / {currentHosp?.icu_total}
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    currentHosp?.icu_available === 0 ? 'bg-red-600' : currentHosp?.icu_available <= 2 ? 'bg-orange-500' : 'bg-[#0F9D91]'
-                  }`}
-                  style={{ width: `${Math.min(100, Math.max(0, (currentHosp?.icu_available / Math.max(1, currentHosp?.icu_total)) * 100))}%` }}
-                />
-              </div>
-
-              <div className="flex items-center space-x-2 pt-1">
-                <button
-                  onClick={() => handleAdjustBed('icu', -1)}
-                  disabled={updating || currentHosp?.icu_available <= 0}
-                  className="flex-1 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 rounded-lg font-bold text-slate-700 flex items-center justify-center space-x-1"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                  <span>-1 ICU</span>
-                </button>
-                <button
-                  onClick={() => handleAdjustBed('icu', 1)}
-                  disabled={updating || currentHosp?.icu_available >= currentHosp?.icu_total}
-                  className="flex-1 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 rounded-lg font-bold text-slate-700 flex items-center justify-center space-x-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+1 ICU</span>
-                </button>
-              </div>
-            </div>
-
-            {/* General Ward Beds Adjuster */}
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-slate-800 text-xs">General Emergency Beds:</span>
-                <span className="font-mono font-black text-sm text-blue-700">
-                  {currentHosp?.general_available} / {currentHosp?.general_total}
-                </span>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-1">
-                <button
-                  onClick={() => handleAdjustBed('general', -2)}
-                  disabled={updating || currentHosp?.general_available <= 0}
-                  className="flex-1 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 rounded-lg font-bold text-slate-700 flex items-center justify-center space-x-1"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                  <span>-2 Beds</span>
-                </button>
-                <button
-                  onClick={() => handleAdjustBed('general', 2)}
-                  disabled={updating || currentHosp?.general_available >= currentHosp?.general_total}
-                  className="flex-1 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 rounded-lg font-bold text-slate-700 flex items-center justify-center space-x-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+2 Beds</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Diversion Gate Switcher */}
-            <div className="pt-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                Hospital Operational Status Gateway:
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleToggleStatus('Operational')}
-                  disabled={updating}
-                  className={`p-2 rounded-xl border text-xs font-bold transition ${
-                    currentHosp?.operational_status === 'Operational'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Operational
-                </button>
-
-                <button
-                  onClick={() => handleToggleStatus('Constrained')}
-                  disabled={updating}
-                  className={`p-2 rounded-xl border text-xs font-bold transition ${
-                    currentHosp?.operational_status === 'Constrained'
-                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Constrained / Divert
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Specialist Availability (Feature 6) */}
-          <div className="bg-white rounded-2xl border border-[#E3E9EF] p-5 shadow-2xs space-y-3 text-xs">
-            <h3 className="text-xs font-bold text-[#17324D] uppercase tracking-wider pb-2 border-b flex items-center justify-between">
-              <span className="flex items-center space-x-1.5">
-                <Stethoscope className="w-4 h-4 text-teal-600" />
-                <span>Specialist On-Duty Readiness</span>
-              </span>
-              <span className="text-[10px] text-emerald-600 font-bold">Active Shift</span>
-            </h3>
-
-            <div className="space-y-2 text-slate-700">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200">
-                <span>Trauma Level 1 Surgery Team</span>
-                <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full">On Standby</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200">
-                <span>Interventional Cardiologist</span>
-                <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full">In Cath Lab</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200">
-                <span>Critical Care Anesthesiologist</span>
-                <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full">Available</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200">
-                <span>Emergency Pediatrician</span>
-                <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full">Available</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>

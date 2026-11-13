@@ -16,9 +16,12 @@ import {
   Sliders,
   Scale,
   History,
-  LayoutDashboard
+  LayoutDashboard,
+  Database,
+  Lock
 } from 'lucide-react';
 import LiveMap from '../components/LiveMap';
+import { useAuth } from '../context/AuthContext';
 
 // Sub-modules
 import ReportingView from './ReportingView';
@@ -39,6 +42,7 @@ const COMMAND_SUB_MODULES = [
 ];
 
 export default function CommandCentreView({ state, onRefresh, onSelectTab }) {
+  const { user, dbStats } = useAuth();
   const [activeSubModule, setActiveSubModule] = useState('overview');
 
   const kpis = state?.kpis || {};
@@ -77,6 +81,26 @@ export default function CommandCentreView({ state, onRefresh, onSelectTab }) {
       {/* Render Selected Command Centre Sub-Module */}
       {activeSubModule === 'overview' && (
         <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+          {/* Operations Security & Database Telemetry Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3.5 bg-slate-900 text-white rounded-2xl text-xs border border-slate-800 shadow-sm">
+            <div className="flex items-center space-x-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-extrabold tracking-wide">
+                {user?.role === 'command'
+                  ? `Authenticated Operator: ${user.name} • ${user.metadata?.clearance_level || 'Level 5 Master Clearance'}`
+                  : `Terminal Mode: ${user ? `${user.name} (${user.role.toUpperCase()})` : 'Public Telemetry Monitor'}`}
+              </span>
+            </div>
+            <div className="flex items-center space-x-3 text-slate-300 font-mono text-[11px]">
+              <span className="flex items-center space-x-1">
+                <Database className="w-3.5 h-3.5 text-emerald-400" />
+                <span>SQLite: <strong>Connected</strong></span>
+              </span>
+              <span>Size: <strong className="text-emerald-300">{dbStats?.file_size_formatted || '60.0 KB'}</strong></span>
+              <span className="hidden sm:inline">Users: <strong>{dbStats?.tables?.users || 20}</strong></span>
+            </div>
+          </div>
+
           {/* Welcome Operations Header */}
           <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>

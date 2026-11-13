@@ -17,9 +17,14 @@ import {
   History,
   Bell,
   Compass,
-  Check
+  Check,
+  User,
+  LogOut,
+  Users
 } from 'lucide-react';
-import { submitEmergencyReport, analyzeTextAI } from '../services/api';
+import { submitEmergencyReport, analyzeTextAI, fetchCitizenIncidents } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import RoleAuthGate from '../components/RoleAuthGate';
 
 const QUICK_EMERGENCIES = [
   {
@@ -66,6 +71,9 @@ const STATUS_STEPS = [
 ];
 
 export default function CitizenPortalView({ state, onRefresh }) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const isCitizen = isAuthenticated && user?.role === 'citizen';
+
   const zones = state?.zones || [];
   const incidents = state?.incidents || [];
   const ambulances = state?.ambulances || [];
@@ -81,6 +89,25 @@ export default function CitizenPortalView({ state, onRefresh }) {
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
   const [aiPreview, setAiPreview] = useState(null);
   const [locationShared, setLocationShared] = useState(false);
+  const [citizenDbHistory, setCitizenDbHistory] = useState([]);
+
+  // Fetch SQLite history for this citizen
+  const loadHistory = async () => {
+    if (user?.id) {
+      try {
+        const hist = await fetchCitizenIncidents(user.id);
+        setCitizenDbHistory(hist);
+      } catch (e) {
+        console.error("Failed to load DB history", e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isCitizen) {
+      loadHistory();
+    }
+  }, [user, isCitizen, incidents]);
 
   // Default to showing the latest incident as active SOS tracking if exists
   useEffect(() => {
@@ -115,6 +142,20 @@ export default function CitizenPortalView({ state, onRefresh }) {
     return () => clearTimeout(timer);
   }, [description, category, injuredCount, unconscious]);
 
+  // If not authenticated as citizen, render the dedicated Citizen Authentication Gate
+  if (!isCitizen) {
+    return (
+      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <RoleAuthGate
+          targetRole="citizen"
+          title="Citizen Emergency Portal Access"
+          subtitle="Sign in or register your citizen medical profile to report emergencies, broadcast one-touch SOS alerts, and track dispatched 108 ambulances in real time."
+          icon={Users}
+        />
+      </div>
+    );
+  }
+
   const handleSubmit = async (e) => {
     e?.preventDefault();
     if (!description.trim()) return;
@@ -127,11 +168,15 @@ export default function CitizenPortalView({ state, onRefresh }) {
         zone_id: zoneId,
         affected_count: Number(injuredCount),
         injured_count: Number(injuredCount),
-        unconscious
+        unconscious,
+        citizen_id: user?.id,
+        citizen_name: user?.name,
+        image_data: uploadedPhoto
       });
 
       setActiveSOS(res.incident);
       setDescription("");
+      loadHistory();
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error("SOS submission failed", err);
@@ -140,15 +185,37 @@ export default function CitizenPortalView({ state, onRefresh }) {
     }
   };
 
-  const handleQuickPanic = (item) => {
+  const handleQuickSOS = async (item) => {
     setDescription(item.desc);
     setCategory(item.category);
     setZoneId(item.zone);
     setInjuredCount(item.injured);
     setUnconscious(item.unconscious);
+
+    try {
+      setSubmitting(true);
+      const res = await submitEmergencyReport({
+        description: item.desc,
+        category: item.category,
+        zone_id: item.zone,
+        affected_count: Number(item.injured),
+        injured_count: Number(item.injured),
+        unconscious: item.unconscious,
+        citizen_id: user?.id,
+        citizen_name: user?.name,
+        image_data: uploadedPhoto
+      });
+      setActiveSOS(res.incident);
+      loadHistory();
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error("Quick SOS failed", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSimulateGPS = () => {
+  const handleShareGPS = () => {
     setLocationShared(true);
     setZoneId("zone-madhapur");
   };
@@ -157,303 +224,374 @@ export default function CitizenPortalView({ state, onRefresh }) {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        setUploadedPhoto(event.target.result);
-      };
+      reader.onload = (event) => setUploadedPhoto(event.target?.result);
       reader.readAsDataURL(file);
     }
   };
 
-  // Find assigned assets for active SOS
+  // Find assigned ambulance and hospital for active SOS
   const assignedAmb = ambulances.find(a => a.id === activeSOS?.assigned_ambulance_id);
   const assignedHosp = hospitals.find(h => h.id === activeSOS?.assigned_hospital_id);
 
-  // Determine current active step index in the 6-stage lifecycle
-  const getStepIndex = () => {
-    if (!activeSOS) return 0;
-    if (activeSOS.status === 'Resolved' || assignedAmb?.status === 'Available') return 5;
-    if (assignedAmb?.status === 'Transporting') return 4;
-    if (assignedAmb?.status === 'On Scene') return 4;
-    if (assignedAmb?.status === 'Dispatched') return 3;
-    if (activeSOS.assigned_ambulance_id) return 2;
-    return 1;
+  // Calculate current stage for the 6-stage stepper
+  const getStageIndex = (status) => {
+    switch (status) {
+      case 'Pending': return 0;
+      case 'Verified': return 1;
+      case 'Dispatched': return 2;
+      case 'In Progress': return 3;
+      case 'On Scene': return 4;
+      case 'Resolved': return 5;
+      default: return 2;
+    }
   };
-
-  const currentStepIdx = getStepIndex();
+  const currentStage = activeSOS ? getStageIndex(activeSOS.status) : 0;
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Citizen Emergency Banner */}
-      <div className="bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 text-white p-5 md:p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full w-fit">
-            <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-            <span>Citizen Emergency Portal • Hyderabad 108 Emergency Network</span>
+      {/* Verified Citizen Profile Banner */}
+      <div className="bg-gradient-to-r from-teal-900 to-[#17324D] text-white p-4 md:p-5 rounded-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-md border border-teal-700/50">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center font-bold text-teal-300 shadow-inner">
+            <User className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-black mt-2">Instant Emergency SOS & Live Tracker</h1>
-          <p className="text-xs text-rose-100 max-w-xl mt-1 leading-relaxed">
-            Report medical emergencies, collisions, fires, or flooding. The RESQ-X intelligent command network
-            classifies triage, dispatches the closest equipped ALS ambulance, and pre-books receiving hospital ICU bays.
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-extrabold text-base tracking-tight">{user.name}</span>
+              <span className="text-[10px] bg-teal-500/30 text-teal-200 border border-teal-400/40 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Verified Citizen Profile
+              </span>
+            </div>
+            <div className="text-[11px] text-teal-100/80 flex flex-wrap gap-x-3.5 gap-y-1 mt-1 font-medium">
+              {user.metadata?.blood_group && (
+                <span className="flex items-center space-x-1">
+                  <span>Blood:</span>
+                  <strong className="text-white bg-red-900/60 px-1.5 py-0.2 rounded font-bold">{user.metadata.blood_group}</strong>
+                </span>
+              )}
+              {user.metadata?.allergies && (
+                <span>Allergies: <strong className="text-white">{user.metadata.allergies}</strong></span>
+              )}
+              {user.phone && (
+                <span>Phone: <strong className="text-white font-mono">{user.phone}</strong></span>
+              )}
+              {user.metadata?.emergency_contact_phone && (
+                <span>SOS Contact: <strong className="text-white">{user.metadata.emergency_contact_phone}</strong></span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={logout}
+          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 self-start md:self-center border border-white/15"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out / Switch</span>
+        </button>
+      </div>
+
+      {/* Hero SOS Banner (Feature 1) */}
+      <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+        <div className="space-y-2 z-10">
+          <div className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider">
+            <HeartPulse className="w-4 h-4 text-white animate-pulse" />
+            <span>Hyderabad Municipal Citizen 108 Emergency Grid</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight">
+            Need Immediate Emergency Assistance?
+          </h1>
+          <p className="text-xs md:text-sm text-white/90 max-w-xl leading-relaxed">
+            Instant AI triage automatically scores severity, selects the closest specialized ambulance, and pre-books critical ICU hospital beds in seconds.
           </p>
         </div>
 
-        {/* 1-Click SOS Panic Button */}
-        <div className="flex items-center space-x-3 shrink-0">
+        <div className="z-10 shrink-0">
           <button
-            onClick={() => {
-              setDescription("URGENT MEDICAL EMERGENCY: Immediate life-support ambulance requested at my current location!");
-              setCategory("cardiac_emergency");
-              setUnconscious(true);
-              setInjuredCount(1);
-            }}
-            className="px-6 py-4 bg-white text-red-600 hover:bg-rose-50 rounded-2xl shadow-lg font-black text-sm uppercase tracking-wider transition transform hover:scale-105 flex items-center space-x-2 border-2 border-white/40"
+            onClick={() => handleQuickSOS(QUICK_EMERGENCIES[0])}
+            disabled={submitting}
+            className="w-36 h-36 rounded-full bg-white text-red-600 font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex flex-col items-center justify-center border-4 border-red-200 animate-bounce"
           >
-            <HeartPulse className="w-6 h-6 text-red-600 animate-pulse" />
-            <span>ONE-TOUCH SOS</span>
+            <PhoneCall className="w-8 h-8 text-red-600 mb-1" />
+            <span>{submitting ? 'ALERTING' : 'SOS 108'}</span>
+            <span className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">One-Touch</span>
           </button>
-
-          <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/20 text-center hidden sm:block">
-            <PhoneCall className="w-5 h-5 text-white mx-auto mb-1 animate-bounce" />
-            <div className="text-base font-black font-mono">108 / 112</div>
-            <span className="text-[9px] text-rose-200">Emergency Helpline</span>
-          </div>
         </div>
+
+        {/* Background glow decoration */}
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
       </div>
 
-      {/* Main Grid: Report Form Left, Live Response Tracker Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Report an Emergency Form */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-[#17324D] uppercase tracking-wider flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-red-600" />
-              <span>Report an Emergency Incident</span>
-            </h2>
-            <span className="text-[11px] text-slate-400 font-medium">Auto AI Triage Enabled</span>
-          </div>
+      {/* Main Grid: Left = Intake & Presets, Right = Live Telemetry & Stepper */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column (5 Cols): Intake Form & Presets */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Preset Buttons for Problem Statement Scenarios */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-[#17324D] uppercase tracking-wider">
+                Instant Presets (Problem Statement 10)
+              </span>
+              <span className="text-[10px] text-slate-400">1-Click Dispatch</span>
+            </div>
 
-          {/* Quick Preset Buttons */}
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Quick Presets (PS10 Hyderabad Scenarios):</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {QUICK_EMERGENCIES.map((q, i) => (
+            <div className="grid grid-cols-1 gap-2">
+              {QUICK_EMERGENCIES.map((item, idx) => (
                 <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleQuickPanic(q)}
-                  className="p-2 rounded-xl border border-slate-200 hover:border-red-400 hover:bg-red-50/50 text-left transition text-xs"
+                  key={idx}
+                  onClick={() => handleQuickSOS(item)}
+                  disabled={submitting}
+                  className="p-3 text-left rounded-xl border border-slate-200 hover:border-red-400 bg-slate-50/70 hover:bg-red-50/40 transition group flex items-start justify-between"
                 >
-                  <strong className="block text-[#17324D] font-bold truncate text-[11px]">{q.title}</strong>
-                  <span className="text-[10px] text-slate-500">{q.injured} casualties</span>
+                  <div className="space-y-0.5 pr-2">
+                    <strong className="text-xs font-bold text-[#17324D] group-hover:text-red-700 block">
+                      {item.title}
+                    </strong>
+                    <p className="text-[11px] text-slate-500 line-clamp-1">{item.desc}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 shrink-0 mt-0.5" />
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Description Input */}
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">
-              Describe the situation or symptoms:
-            </label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Two cars collided on Hitec City road near Madhapur. Five people injured. One unconscious..."
-              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:border-red-500 focus:ring-1 focus:ring-red-400 outline-none text-[#243447]"
-            />
-          </div>
+          {/* Detailed Reporting Form (Features 2, 3, 4, 5) */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-4">
+            <h3 className="font-bold text-[#17324D] uppercase tracking-wider text-xs border-b pb-2 flex items-center justify-between">
+              <span>Report an Emergency Incident</span>
+              <span className="text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-bold">
+                AI Powered Intake
+              </span>
+            </h3>
 
-          {/* Category & Location */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div>
-              <label className="text-slate-600 font-semibold block mb-1">Emergency Category:</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-medium text-slate-800 outline-none"
-              >
-                <option value="road_accident">Road Accident / Collision</option>
-                <option value="cardiac_emergency">Cardiac Emergency / Chest Pain</option>
-                <option value="urban_flooding">Urban Flooding / Waterlogging</option>
-                <option value="fire">Fire / Burns / Smoke</option>
-                <option value="medical_emergency">General Medical Emergency</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-slate-600 font-semibold">Location / Sector:</label>
-                <button
-                  type="button"
-                  onClick={handleSimulateGPS}
-                  className="text-[10px] text-blue-600 hover:underline font-bold flex items-center space-x-1"
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Emergency Category</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#0F9D91]"
                 >
-                  <Compass className="w-3 h-3" />
-                  <span>{locationShared ? 'GPS Shared' : 'Share GPS'}</span>
-                </button>
+                  <option value="road_accident">Road Accident (Vehicular / Trauma)</option>
+                  <option value="cardiac_emergency">Cardiac Emergency (Heart Attack / Stroke)</option>
+                  <option value="urban_flooding">Urban Flooding (Waterlogging / Trapped)</option>
+                  <option value="fire">Fire / Structural Smoke Incident</option>
+                  <option value="respiratory_distress">Severe Respiratory Failure</option>
+                  <option value="neurological_stroke">Acute Neurological Trauma / Seizure</option>
+                </select>
               </div>
-              <select
-                value={zoneId}
-                onChange={(e) => setZoneId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-medium text-slate-800 outline-none"
-              >
-                {zones.map(z => (
-                  <option key={z.id} value={z.id}>{z.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          {/* Casualties & Unconscious Toggle */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div>
-              <label className="text-slate-600 font-semibold block mb-1">Number of Injured:</label>
-              <input
-                type="number"
-                min={1}
-                value={injuredCount}
-                onChange={(e) => setInjuredCount(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-red-600 outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col justify-end">
-              <label className="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 bg-slate-50 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={unconscious}
-                  onChange={(e) => setUnconscious(e.target.checked)}
-                  className="w-4 h-4 text-red-600 rounded"
-                />
-                <span className="text-xs font-bold text-red-700">Patient Unconscious</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Upload Photos Dropzone */}
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Upload Incident Photo (Optional):</label>
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-3 text-center hover:bg-slate-50 transition cursor-pointer relative">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-              {uploadedPhoto ? (
-                <div className="flex items-center justify-center space-x-3">
-                  <img src={uploadedPhoto} alt="Incident" className="w-12 h-12 object-cover rounded-lg border" />
-                  <span className="text-xs font-bold text-emerald-700">Photo Attached (Visual AI Triage Ready)</span>
+              {/* Zone / Location */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">Incident Location / Zone</label>
+                  <button
+                    type="button"
+                    onClick={handleShareGPS}
+                    className="text-[11px] text-[#0F9D91] hover:underline font-bold flex items-center space-x-1"
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>{locationShared ? 'GPS Shared (Madhapur)' : 'Share GPS Location'}</span>
+                  </button>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center space-x-2 text-xs text-slate-500">
-                  <Camera className="w-4 h-4 text-slate-400" />
-                  <span>Click or drag photo of accident / symptoms</span>
+                <select
+                  value={zoneId}
+                  onChange={(e) => setZoneId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#0F9D91]"
+                >
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name} (Risk: {z.risk_score} • Demand: {z.predicted_demand || 'Normal'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Incident Description & Symptoms
+                </label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe the condition, patient symptoms, hazards, and exact landmark..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#0F9D91]"
+                />
+              </div>
+
+              {/* Patients & Unconscious Toggle */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Injured Persons</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={injuredCount}
+                    onChange={(e) => setInjuredCount(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Consciousness</label>
+                  <button
+                    type="button"
+                    onClick={() => setUnconscious(!unconscious)}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 border ${
+                      unconscious
+                        ? 'bg-red-500 text-white border-red-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>{unconscious ? '⚠️ Unconscious' : 'Conscious'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Photo Upload (Feature 5) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Attach Scene Photo (Visual Verification)
+                </label>
+                <div className="relative border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-xl p-3 text-center bg-slate-50/50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  {uploadedPhoto ? (
+                    <div className="flex items-center justify-center space-x-2 text-emerald-700 text-xs font-bold">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Photo Attached for AI Verification</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-2 text-slate-500 text-xs">
+                      <Camera className="w-4 h-4 text-slate-400" />
+                      <span>Drop photo or click to take photo</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Live AI Classification Preview (Feature 6) */}
+              {aiPreview && (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#17324D] flex items-center space-x-1">
+                      <Activity className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Real-time Clinical Triage Preview</span>
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                      aiPreview.severity === 'Critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {aiPreview.severity} ({aiPreview.priority_score}/100)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">{aiPreview.reasoning}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting || !description.trim()}
+                className="w-full py-3 bg-[#17324D] hover:bg-[#204569] text-white font-extrabold text-xs rounded-xl shadow-md transition disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                <span>{submitting ? 'Classifying & Dispatching...' : 'Submit Emergency Report'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Column (7 Cols): Live Tracking, Stepper & Emergency Details */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Live Incident Status Stepper (Feature 10) */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Live Status</span>
+                <h3 className="font-extrabold text-[#17324D] text-sm">
+                  {activeSOS ? activeSOS.title : 'No Active Incident'}
+                </h3>
+              </div>
+
+              {activeSOS && (
+                <div className="text-right">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase ${
+                    activeSOS.severity === 'Critical' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {activeSOS.severity} Severity
+                  </span>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* AI Real-time Classification Preview (Feature 6) */}
-          {aiPreview && (
-            <div className="p-3 bg-gradient-to-r from-slate-900 to-[#17324D] text-white rounded-xl space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-teal-300 font-bold uppercase text-[10px]">AI Emergency Classification:</span>
-                <span className="bg-red-600 text-white font-bold text-[10px] px-2 py-0.2 rounded uppercase">
-                  {aiPreview.severity} Priority
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-200">
-                Equipment: <strong className="text-teal-200">{aiPreview.recommended_ambulance_type} Unit</strong> • Requires ICU: <strong className="text-red-300">{aiPreview.requires_icu ? 'YES' : 'Standard'}</strong>
-              </div>
-              <p className="text-[10px] text-slate-400 leading-relaxed italic">
-                "{aiPreview.reasoning}"
-              </p>
-            </div>
-          )}
-
-          {/* Submit SOS Button */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !description.trim()}
-            className="w-full py-3 bg-[#DC3545] hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md shadow-red-900/20 transition flex items-center justify-center space-x-2"
-          >
-            {submitting ? (
-              <span>Connecting to Dispatch Mesh...</span>
-            ) : (
-              <>
-                <HeartPulse className="w-4 h-4 animate-pulse" />
-                <span>Submit Emergency & Dispatch Ambulance</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Right Column: Live Ambulance Tracking & Progress */}
-        <div className="space-y-4">
-          <div className="bg-white p-6 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-[#17324D] uppercase tracking-wider flex items-center space-x-2">
-                <Ambulance className="w-4 h-4 text-[#2563A6]" />
-                <span>Live Ambulance Tracking & Response</span>
-              </h2>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                Live Telemetry Active
-              </span>
-            </div>
-
-            {/* 6-Stage Emergency Status Stepper (Feature 10) */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                Mission Progress Stepper:
-              </span>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 text-center">
+            {/* 6-Stage Stepper Bar */}
+            <div className="relative pt-2 pb-4">
+              <div className="grid grid-cols-6 gap-1 text-center">
                 {STATUS_STEPS.map((step, idx) => {
-                  const isDone = idx <= currentStepIdx;
-                  const isCurrent = idx === currentStepIdx;
+                  const isDone = idx <= currentStage;
+                  const isCurrent = idx === currentStage;
 
                   return (
-                    <div
-                      key={step.id}
-                      className={`p-2 rounded-xl border text-[10px] font-bold transition ${
-                        isCurrent
-                          ? 'bg-[#17324D] text-white border-[#17324D] shadow-xs'
-                          : isDone
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                          : 'bg-slate-50 text-slate-400 border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center mb-0.5">
-                        {isDone ? <Check className="w-3 h-3 text-emerald-600" /> : <Clock className="w-3 h-3 text-slate-400" />}
+                    <div key={step.id} className="space-y-1.5 flex flex-col items-center">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-md scale-110'
+                            : isDone
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}
+                      >
+                        {isDone && !isCurrent ? <Check className="w-3.5 h-3.5" /> : idx + 1}
                       </div>
-                      <span className="truncate block">{step.label}</span>
+                      <span className={`text-[10px] font-bold block leading-tight ${
+                        isCurrent ? 'text-blue-700' : isDone ? 'text-slate-700' : 'text-slate-400'
+                      }`}>
+                        {step.label.replace(/^\d+\.\s*/, '')}
+                      </span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
+            {/* Live Tracking Information Card */}
             {activeSOS ? (
-              <div className="space-y-4 text-xs">
-                {/* Active Emergency Card */}
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-slate-400 text-[10px]">CASE REF: {activeSOS.id?.toUpperCase()}</span>
-                    <span className="text-[10px] bg-red-600 text-white font-bold px-2 py-0.5 rounded uppercase">
-                      {activeSOS.severity}
+              <div className="space-y-4 pt-2">
+                {/* Clinical Vitals & Reasoning */}
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-bold">Incident Classification & Clinical Triage:</span>
+                    <span className="font-mono text-[10px] text-slate-500">ID: {activeSOS.id}</span>
+                  </div>
+                  <p className="text-[11.5px] text-slate-600 leading-relaxed">
+                    {activeSOS.ai_reasoning || "Incident triaged by RESQ-X Clinical NLP engine."}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1 text-[10.5px]">
+                    <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded font-bold">
+                      Priority Score: {activeSOS.priority_score}/100
+                    </span>
+                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold">
+                      ICU Required: {activeSOS.requires_icu ? 'YES' : 'NO'}
+                    </span>
+                    <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-bold">
+                      Recommended: {activeSOS.recommended_ambulance_type || 'ALS'} Unit
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-xs">{activeSOS.title}</h3>
-                  <p className="text-slate-600 text-[11px] mt-0.5">{activeSOS.description}</p>
                 </div>
 
                 {/* Assigned Ambulance Card & ETA (Features 7 & 8) */}
                 <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-200 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+                      <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
                         <Ambulance className="w-5 h-5" />
                       </div>
                       <div>
@@ -486,7 +624,7 @@ export default function CitizenPortalView({ state, onRefresh }) {
                 <div className="p-4 bg-teal-50/70 rounded-xl border border-teal-200 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#0F9D91] text-white flex items-center justify-center font-bold">
+                      <div className="w-8 h-8 rounded-xl bg-[#0F9D91] text-white flex items-center justify-center font-bold shadow-xs">
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
@@ -512,34 +650,41 @@ export default function CitizenPortalView({ state, onRefresh }) {
             )}
           </div>
 
-          {/* Emergency History (Feature 12) */}
+          {/* Emergency History from SQLite Database (Feature 12) */}
           <div className="bg-white p-5 rounded-2xl border border-[#E3E9EF] shadow-2xs space-y-3 text-xs">
             <h3 className="font-bold text-[#17324D] uppercase tracking-wider text-xs border-b pb-2 flex items-center justify-between">
               <span className="flex items-center space-x-1.5">
                 <History className="w-4 h-4 text-slate-500" />
-                <span>Recent Reported Incidents History</span>
+                <span>Your SQLite Emergency Records History</span>
               </span>
-              <span className="text-[10px] text-slate-400">{incidents.length} Records</span>
+              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold font-mono">
+                {citizenDbHistory.length || incidents.length} Saved in DB
+              </span>
             </h3>
 
             <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-              {incidents.slice(0, 4).map((inc) => (
+              {(citizenDbHistory.length > 0 ? citizenDbHistory : incidents).slice(0, 5).map((inc) => (
                 <div
                   key={inc.id}
                   onClick={() => setActiveSOS(inc)}
                   className={`p-2.5 rounded-xl border text-xs cursor-pointer transition flex items-center justify-between ${
-                    activeSOS?.id === inc.id ? 'border-blue-400 bg-blue-50/40' : 'border-slate-200 bg-slate-50'
+                    activeSOS?.id === inc.id ? 'border-teal-400 bg-teal-50/40 shadow-xs' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                   }`}
                 >
                   <div>
-                    <strong className="text-slate-900 block text-xs truncate max-w-[200px]">{inc.title}</strong>
-                    <span className="text-[10px] text-slate-400">{inc.zone_id} • {inc.created_at}</span>
+                    <strong className="text-slate-900 block text-xs truncate max-w-[240px]">{inc.title}</strong>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Zone: {inc.zone_id} • Reported: {inc.created_at || inc.reported_at?.substring(11, 16) || 'Just now'}
+                    </span>
                   </div>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
-                    inc.severity === 'Critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
-                  }`}>
-                    {inc.severity}
-                  </span>
+                  <div className="text-right space-y-0.5">
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase block ${
+                      inc.severity === 'Critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {inc.severity}
+                    </span>
+                    <span className="text-[9px] text-slate-400 block font-mono">{inc.status}</span>
+                  </div>
                 </div>
               ))}
             </div>

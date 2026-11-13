@@ -9,21 +9,33 @@ import {
   RefreshCw,
   ShieldAlert,
   Flame,
-  X
+  X,
+  Database,
+  User,
+  LogOut,
+  ChevronDown,
+  UserCheck,
+  Check,
+  ShieldCheck,
+  Key
 } from 'lucide-react';
 import { triggerSimulationEvent } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export const ROLE_DASHBOARDS = [
-  { id: 'citizen', label: 'Citizen Dashboard (SOS)', icon: Users, badge: 'Public 108' },
-  { id: 'ambulance', label: 'Ambulance MDT', icon: Ambulance, badge: 'Paramedic' },
-  { id: 'hospital', label: 'Hospital ER & ICU', icon: Building2, badge: 'Facility' },
-  { id: 'command', label: 'Command Centre (Brain)', icon: LayoutDashboard, badge: 'Master ECC' },
+  { id: 'citizen', label: 'Citizen Dashboard (SOS)', icon: Users, badge: 'Public 108', roleKey: 'citizen' },
+  { id: 'ambulance', label: 'Ambulance MDT', icon: Ambulance, badge: 'Paramedic', roleKey: 'ambulance' },
+  { id: 'hospital', label: 'Hospital ER & ICU', icon: Building2, badge: 'Facility', roleKey: 'hospital' },
+  { id: 'command', label: 'Command Centre (Brain)', icon: LayoutDashboard, badge: 'Master ECC', roleKey: 'command' },
 ];
 
 export default function Header({ currentTab, onSelectTab, state, wsStatus, onRefresh }) {
+  const { user, isAuthenticated, logout, quickLogin, demoUsers, dbStats } = useAuth();
   const [time, setTime] = useState(new Date().toLocaleTimeString());
   const [resetting, setResetting] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showDbPopover, setShowDbPopover] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
@@ -45,6 +57,16 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
   const kpis = state?.kpis || {};
   const decisionLogs = state?.decision_logs || [];
   const criticalLogs = decisionLogs.filter(d => d.severity === 'Critical' || d.severity === 'Warning').slice(0, 8);
+
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'citizen': return 'bg-teal-50 text-teal-700 border-teal-200';
+      case 'ambulance': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'hospital': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'command': return 'bg-amber-50 text-amber-800 border-amber-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
 
   return (
     <header className="bg-white border-b border-[#E3E9EF] shadow-2xs sticky top-0 z-40">
@@ -87,8 +109,207 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
           </div>
         </div>
 
-        {/* Right: Reset Action, Live Alerts & Clock */}
+        {/* Right: SQLite Status, User Profile, Alerts & Clock */}
         <div className="flex items-center space-x-2 shrink-0">
+          {/* SQLite Database Live Pill */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDbPopover(!showDbPopover)}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 transition"
+              title="Click to view SQLite Database Telemetry"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden xl:inline text-[11px]">SQLite:</span>
+              <span className="text-emerald-700 font-bold text-[11px]">Active</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            </button>
+
+            {/* Database Telemetry Popover */}
+            {showDbPopover && (
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 text-xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center space-x-1.5 font-bold text-[#17324D]">
+                    <Database className="w-4 h-4 text-emerald-600" />
+                    <span>Embedded SQLite DB</span>
+                  </div>
+                  <button onClick={() => setShowDbPopover(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-500">Engine</span>
+                    <span className="font-mono font-bold text-slate-800">node:sqlite (WAL)</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-500">Database File</span>
+                    <span className="font-mono text-[10px] text-slate-700">backend/data/resqx.db</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-500">File Size</span>
+                    <span className="font-bold text-emerald-700">{dbStats?.file_size_formatted || '60.0 KB'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-500">Configured Users</span>
+                    <span className="font-bold text-slate-800">{dbStats?.tables?.users || 20}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-50">
+                    <span className="text-slate-500">Active Sessions</span>
+                    <span className="font-bold text-slate-800">{dbStats?.tables?.sessions || 0}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-500">Recorded Incidents</span>
+                    <span className="font-bold text-slate-800">{dbStats?.tables?.incidents || 0}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* User Session Profile Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition shadow-2xs ${
+                isAuthenticated
+                  ? getRoleBadgeColor(user?.role)
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span className="truncate max-w-[120px]">
+                {isAuthenticated ? user?.name : 'Guest Mode'}
+              </span>
+              <ChevronDown className="w-3 h-3 opacity-60" />
+            </button>
+
+            {/* User Drawer / Persona Switcher */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 text-xs space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div>
+                    <div className="font-bold text-[#17324D] text-sm">
+                      {isAuthenticated ? user?.name : 'Authentication Terminal'}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {isAuthenticated ? `Role: ${user?.role?.toUpperCase()}` : 'Select a persona to sign in'}
+                    </div>
+                  </div>
+                  <button onClick={() => setShowUserMenu(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {isAuthenticated && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Username:</span>
+                      <span className="font-mono font-bold text-slate-800">{user?.username}</span>
+                    </div>
+                    {user?.entity_id && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Entity ID:</span>
+                        <span className="font-mono font-bold text-[#2563A6]">{user?.entity_id}</span>
+                      </div>
+                    )}
+                    {user?.metadata?.blood_group && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Blood Group:</span>
+                        <span className="font-bold text-red-600">{user?.metadata?.blood_group}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => { logout(); setShowUserMenu(false); }}
+                      className="w-full mt-2 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold rounded-lg text-xs flex items-center justify-center space-x-1.5 transition"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Log Out Session</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* 1-Click Fast Persona Switcher */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-extrabold text-[#17324D] uppercase tracking-wider flex items-center space-x-1">
+                    <UserCheck className="w-3.5 h-3.5 text-[#0F9D91]" />
+                    <span>Quick Switch Persona (1-Click)</span>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+                    {/* Citizen */}
+                    <button
+                      onClick={() => {
+                        const cit = demoUsers.find(u => u.username === 'citizen_rahul');
+                        if (cit) quickLogin(cit);
+                        onSelectTab('citizen');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full p-2 text-left bg-teal-50/50 hover:bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between text-[11px] transition"
+                    >
+                      <div>
+                        <div className="font-bold text-teal-900">Rahul Sharma (Citizen SOS)</div>
+                        <div className="text-[10px] text-teal-700 font-mono">Blood: O+ • Madhapur</div>
+                      </div>
+                      <span className="text-[9px] bg-teal-600 text-white font-bold px-1.5 py-0.5 rounded">CITIZEN</span>
+                    </button>
+
+                    {/* Paramedic */}
+                    <button
+                      onClick={() => {
+                        const amb = demoUsers.find(u => u.username === 'paramedic_a01');
+                        if (amb) quickLogin(amb);
+                        onSelectTab('ambulance');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full p-2 text-left bg-blue-50/50 hover:bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-[11px] transition"
+                    >
+                      <div>
+                        <div className="font-bold text-blue-900">Unit RESQ-A01 (Paramedic)</div>
+                        <div className="text-[10px] text-blue-700 font-mono">Dr. Anita Desai • ALS Unit</div>
+                      </div>
+                      <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded">AMBULANCE</span>
+                    </button>
+
+                    {/* Hospital */}
+                    <button
+                      onClick={() => {
+                        const hosp = demoUsers.find(u => u.username === 'hosp_osmania');
+                        if (hosp) quickLogin(hosp);
+                        onSelectTab('hospital');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full p-2 text-left bg-purple-50/50 hover:bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between text-[11px] transition"
+                    >
+                      <div>
+                        <div className="font-bold text-purple-900">Osmania ER Desk (Hospital)</div>
+                        <div className="text-[10px] text-purple-700 font-mono">Dr. Venkat Rao • Trauma L1</div>
+                      </div>
+                      <span className="text-[9px] bg-purple-600 text-white font-bold px-1.5 py-0.5 rounded">HOSPITAL</span>
+                    </button>
+
+                    {/* Command */}
+                    <button
+                      onClick={() => {
+                        const cmd = demoUsers.find(u => u.username === 'command_admin');
+                        if (cmd) quickLogin(cmd);
+                        onSelectTab('command');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full p-2 text-left bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl flex items-center justify-between text-[11px] transition"
+                    >
+                      <div>
+                        <div className="font-bold text-[#17324D]">Director Rao (Command ECC)</div>
+                        <div className="text-[10px] text-slate-600 font-mono">Level 5 Master Clearance</div>
+                      </div>
+                      <span className="text-[9px] bg-[#17324D] text-white font-bold px-1.5 py-0.5 rounded">COMMAND</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Live Alerts Bell */}
           <div className="relative">
             <button
@@ -175,7 +396,7 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
         {ROLE_DASHBOARDS.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
-          const isCommand = tab.id === 'command';
+          const isUserRole = user?.role === tab.roleKey;
 
           return (
             <button
@@ -183,9 +404,7 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
               onClick={() => onSelectTab(tab.id)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 select-none ${
                 isActive
-                  ? isCommand
-                    ? 'bg-gradient-to-r from-[#17324D] to-[#2563A6] text-white shadow-sm'
-                    : 'bg-[#17324D] text-white shadow-sm'
+                  ? 'bg-gradient-to-r from-[#17324D] to-[#2563A6] text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
             >
@@ -198,6 +417,11 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
                 }`}>
                   {tab.badge}
                 </span>
+              )}
+
+              {/* Verified active role indicator badge */}
+              {isUserRole && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-200" title="Authenticated Persona" />
               )}
             </button>
           );

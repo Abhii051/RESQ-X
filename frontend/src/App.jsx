@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Component } from 'react';
 import Header from './components/Header';
 import { fetchState, subscribeToWebSocket } from './services/api';
+import { AuthProvider } from './context/AuthContext';
 
 // 4 Completely Distinct Role-Based Dashboards
 import CitizenPortalView from './views/CitizenPortalView';
@@ -42,8 +43,8 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default function App() {
-  const [currentTab, setCurrentTab] = useState('command');
+function MainLayout() {
+  const [currentTab, setCurrentTab] = useState('citizen');
   const [state, setState] = useState(null);
   const [wsStatus, setWsStatus] = useState('connecting');
 
@@ -88,8 +89,8 @@ export default function App() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#0F9D91] to-[#2563A6] flex items-center justify-center mx-auto shadow-md animate-pulse">
             <span className="text-white font-black text-xl">X</span>
           </div>
-          <h2 className="text-sm font-bold text-[#17324D]">Initializing RESQ-X Hyderabad Network Mesh...</h2>
-          <p className="text-xs text-slate-400">Connecting to Municipal Emergency Telemetry Stream</p>
+          <h2 className="text-sm font-bold text-[#17324D]">Connecting to RESQ-X SQLite & Telemetry Mesh...</h2>
+          <p className="text-xs text-slate-400">Loading Hyderabad Emergency Network Database</p>
         </div>
       </div>
     );
@@ -98,7 +99,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen w-screen flex flex-col bg-[#F4F7FA] text-[#243447]">
-        {/* Top Header with the 4 Distinct Role Dashboards */}
+        {/* Top Header with Role Switcher & Database Status */}
         <Header
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
@@ -140,5 +141,13 @@ export default function App() {
         </main>
       </div>
     </ErrorBoundary>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainLayout />
+    </AuthProvider>
   );
 }

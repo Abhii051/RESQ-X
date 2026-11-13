@@ -1,4 +1,4 @@
-// RESQ-X Unified Backend Server (Express + WebSockets + Static SPA Serving)
+// RESQ-X Unified Backend Server (Express + WebSockets + SQLite Database + Static SPA)
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
@@ -14,10 +14,26 @@ import { HospitalOverloadPredictor } from './hospitalPredictor.js';
 import { SmartPrepositioningEngine } from './prepositioning.js';
 import { DispatchComparator } from './comparison.js';
 import { UnifiedSimulationEngine } from './simulationEngine.js';
+import {
+  initDatabase,
+  authenticateUser,
+  registerCitizen,
+  verifySession,
+  revokeSession,
+  getDemoUsers,
+  getDatabaseStats,
+  saveIncidentRecord,
+  getIncidentHistory,
+  saveRadioMessage,
+  getRadioMessages
+} from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '..', 'frontend', 'dist');
+
+// Initialize Native SQLite Database
+initDatabase();
 
 const app = express();
 const port = 8000;
@@ -27,6 +43,19 @@ app.use(express.json());
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
+
+function getAuthUser(req) {
+  const authHeader = req.headers['authorization'];
+  let token = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+  if (!token) return null;
+  const verified = verifySession(token);
+  return verified ? verified.user : null;
+}
 
 function getFullStateDict() {
   const activeIncidents = appState.incidents.filter(i => ["Pending", "Dispatched", "In Progress", "Escalated"].includes(i.status));
@@ -68,6 +97,7 @@ function getFullStateDict() {
     ambulances: appState.ambulances,
     incidents: appState.incidents,
     decision_logs: appState.decisionLogs.slice(0, 30),
+    db_stats: getDatabaseStats(),
     last_updated: appState.lastUpdated
   };
 }
@@ -91,6 +121,99 @@ wss.on('connection', (ws) => {
   });
 });
 
+// ---------------- AUTHENTICATION ROUTES ----------------
+
+// Unified Login for Citizen, Ambulance, Hospital, and Command
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    const result = authenticateUser({ username, password, role });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(401).json({ success: false, error: err.message });
+  }
+});
+
+// Citizen Self-Registration
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const result = registerCitizen(req.body);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Current User Profile Verification
+app.get('/api/auth/me', (req, res) => {
+  const user = getAuthUser(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: "Not authenticated or session expired" });
+  }
+  res.json({ success: true, user });
+});
+
+// Logout Session Invalidation
+app.post('/api/auth/logout', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    revokeSession(token);
+  }
+  res.json({ success: true, message: "Logged out successfully" });
+});
+
+// Demo accounts for rapid hackathon role testing
+app.get('/api/auth/demo-users', (req, res) => {
+  res.json(getDemoUsers());
+});
+
+// SQLite Database Health and Stats
+app.get('/api/database/stats', (req, res) => {
+  res.json(getDatabaseStats());
+});
+
+// Citizen Emergency History from Database
+app.get('/api/citizen/incidents', (req, res) => {
+  const user = getAuthUser(req);
+  const citizenId = user && user.role === 'citizen' ? user.id : (req.query.citizen_id || null);
+  const history = getIncidentHistory(citizenId);
+  res.json(history);
+});
+
+// Paramedic & Dispatch Two-Way Radio
+app.get('/api/radio/messages', (req, res) => {
+  const ambId = req.query.ambulance_id || null;
+  const messages = getRadioMessages(ambId);
+  res.json(messages);
+});
+
+app.post('/api/radio/message', (req, res) => {
+  const user = getAuthUser(req);
+  const { channel = 'CH-1 (Tactical)', message, ambulance_id } = req.body;
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: "Message cannot be empty" });
+  }
+
+  const sender = user ? `${user.name}` : (req.body.sender || 'Radio Operator');
+  const record = saveRadioMessage({
+    sender,
+    channel,
+    message: message.trim(),
+    ambulance_id: ambulance_id || (user?.entity_id || null)
+  });
+
+  // Broadcast via WebSocket
+  const wsPayload = JSON.stringify({ type: "RADIO_BROADCAST", data: record });
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(wsPayload);
+    }
+  }
+
+  res.json({ success: true, message: record });
+});
+
 // ---------------- REST API ROUTES ----------------
 
 app.get('/api/state', (req, res) => {
@@ -98,6 +221,7 @@ app.get('/api/state', (req, res) => {
 });
 
 app.post('/api/report', (req, res) => {
+  const user = getAuthUser(req);
   const {
     description = "",
     category = "road_accident",
@@ -106,7 +230,9 @@ app.post('/api/report', (req, res) => {
     lng,
     affected_count = 1,
     injured_count = 1,
-    unconscious = false
+    unconscious = false,
+    citizen_name = null,
+    image_data = null
   } = req.body;
 
   const analysis = AIEmergencyIntelligence.analyzeEmergency({
@@ -122,6 +248,9 @@ app.post('/api/report', (req, res) => {
 
   const incLat = lat ? Number(lat) : (zone.lat + 0.001);
   const incLng = lng ? Number(lng) : (zone.lng + 0.001);
+
+  const reportingCitizenId = user?.role === 'citizen' ? user.id : (req.body.citizen_id || 'guest-citizen');
+  const reportingCitizenName = user ? user.name : (citizen_name || 'Citizen Caller');
 
   const newInc = {
     id: incId,
@@ -143,7 +272,10 @@ app.post('/api/report', (req, res) => {
     status: "Pending",
     created_at: new Date().toLocaleTimeString(),
     ai_reasoning: analysis.reasoning,
-    waiting_time_minutes: 0.0
+    waiting_time_minutes: 0.0,
+    citizen_id: reportingCitizenId,
+    citizen_name: reportingCitizenName,
+    has_photo: Boolean(image_data)
   };
 
   appState.incidents.push(newInc);
@@ -204,6 +336,9 @@ app.post('/api/report', (req, res) => {
       severity: "Critical"
     });
   }
+
+  // Persist incident in SQLite Database
+  saveIncidentRecord(newInc, reportingCitizenId, reportingCitizenName);
 
   appState.recomputeMetrics();
   broadcastState();
@@ -307,10 +442,18 @@ app.post('/api/simulation/reset', (req, res) => {
   res.json(result);
 });
 
-// Management Patch Endpoints
+// Management Patch Endpoints with Role-Based Access Control
 app.patch('/api/ambulance/:id/status', (req, res) => {
+  const user = getAuthUser(req);
   const amb = appState.ambulances.find(a => a.id === req.params.id);
   if (!amb) return res.status(404).json({ error: "Ambulance not found" });
+
+  // Role validation: if ambulance user, verify matching entity_id
+  if (user && user.role === 'ambulance' && user.entity_id && user.entity_id !== req.params.id) {
+    return res.status(403).json({
+      error: `Security Check: Paramedic unit '${user.name}' is only authorized to update vehicle '${user.entity_id}', not '${req.params.id}'`
+    });
+  }
 
   const { status } = req.body;
   const validStatuses = ["Available", "Dispatched", "On Scene", "Transporting", "Unavailable"];
@@ -329,7 +472,7 @@ app.patch('/api/ambulance/:id/status', (req, res) => {
   appState.addDecisionLog({
     eventType: "OPERATOR_OVERRIDE",
     decision: `Ambulance ${amb.code} status updated to ${status}`,
-    reason: "Manual status override by emergency operations controller",
+    reason: user ? `Status update by ${user.name} (${user.role.toUpperCase()})` : "Manual status update via MDT console",
     prev: `Status: ${prev}`,
     newAssigned: `Status: ${status}`,
     severity: "Info"
@@ -341,13 +484,28 @@ app.patch('/api/ambulance/:id/status', (req, res) => {
 });
 
 app.patch('/api/hospital/:id/capacity', (req, res) => {
+  const user = getAuthUser(req);
   const hosp = appState.hospitals.find(h => h.id === req.params.id);
   if (!hosp) return res.status(404).json({ error: "Hospital not found" });
+
+  // Role validation: if hospital user, verify matching entity_id
+  if (user && user.role === 'hospital' && user.entity_id && user.entity_id !== req.params.id) {
+    return res.status(403).json({
+      error: `Security Check: Hospital administrator at '${user.name}' can only modify bed allocations for '${user.entity_id}', not '${req.params.id}'`
+    });
+  }
 
   const { icu_available, general_available, operational_status } = req.body;
   if (icu_available !== undefined) hosp.icu_available = Math.max(0, Math.min(Number(icu_available), hosp.icu_total));
   if (general_available !== undefined) hosp.general_available = Math.max(0, Math.min(Number(general_available), hosp.general_total));
   if (operational_status) hosp.operational_status = operational_status;
+
+  appState.addDecisionLog({
+    eventType: "HOSPITAL_BED_UPDATE",
+    decision: `${hosp.name} Capacity Updated`,
+    reason: user ? `Bed registry updated by ${user.name}` : `ICU: ${hosp.icu_available}/${hosp.icu_total}, General: ${hosp.general_available}/${hosp.general_total}`,
+    severity: hosp.icu_available === 0 ? "Warning" : "Info"
+  });
 
   appState.recomputeMetrics();
   broadcastState();
