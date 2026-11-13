@@ -596,8 +596,14 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-server.listen(port, () => {
-  console.log(`[RESQ-X Engine] Backend server running on http://127.0.0.1:${port}`);
-  console.log(`[RESQ-X Engine] Serving production SPA from ${distPath}`);
-  console.log(`[RESQ-X Engine] Real-time WebSocket listening at ws://127.0.0.1:${port}/ws`);
-});
+// Only bind HTTP listener when not running in Vercel Serverless environment
+if (!process.env.VERCEL) {
+  server.listen(port, () => {
+    console.log(`[RESQ-X Engine] Backend server running on http://127.0.0.1:${port}`);
+    console.log(`[RESQ-X Engine] Serving production SPA from ${distPath}`);
+    console.log(`[RESQ-X Engine] Real-time WebSocket listening at ws://127.0.0.1:${port}/ws`);
+  });
+}
+
+export default app;
+export { app, server };

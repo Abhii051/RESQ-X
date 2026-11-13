@@ -16,11 +16,15 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DB_DIR = path.join(__dirname, 'data');
+const DB_DIR = process.env.VERCEL ? path.join('/tmp', 'resqx-data') : path.join(__dirname, 'data');
 const DB_PATH = path.join(DB_DIR, 'resqx.db');
 
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn("[Database] Dir init warning:", e.message);
 }
 
 let db = null;
@@ -36,7 +40,17 @@ export function generateToken() {
 export function initDatabase() {
   if (db) return db;
 
-  db = new DatabaseSync(DB_PATH);
+  try {
+    db = new DatabaseSync(DB_PATH);
+  } catch (err) {
+    console.warn("[Database] DatabaseSync file error, falling back to in-memory:", err.message);
+    try {
+      db = new DatabaseSync(':memory:');
+    } catch (e2) {
+      console.error("[Database] SQLite initialization failed:", e2.message);
+      return null;
+    }
+  }
 
   // WAL mode for concurrency
   try {
