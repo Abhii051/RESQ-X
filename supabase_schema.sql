@@ -70,32 +70,27 @@ CREATE TABLE IF NOT EXISTS resqx_audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Enable Row Level Security (RLS) & Public Policies for Demo
+-- 2. Row Level Security (RLS) & Public Policies for Demo
 ALTER TABLE resqx_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resqx_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resqx_incidents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resqx_radio_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resqx_audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Allow anon read/write access for demo network clients
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'resqx_users' AND policyname = 'Public Access Users') THEN
-    CREATE POLICY "Public Access Users" ON resqx_users FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'resqx_sessions' AND policyname = 'Public Access Sessions') THEN
-    CREATE POLICY "Public Access Sessions" ON resqx_sessions FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'resqx_incidents' AND policyname = 'Public Access Incidents') THEN
-    CREATE POLICY "Public Access Incidents" ON resqx_incidents FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'resqx_radio_messages' AND policyname = 'Public Access Radio') THEN
-    CREATE POLICY "Public Access Radio" ON resqx_radio_messages FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'resqx_audit_logs' AND policyname = 'Public Access Audit') THEN
-    CREATE POLICY "Public Access Audit" ON resqx_audit_logs FOR ALL USING (true) WITH CHECK (true);
-  END IF;
-END $$;
+DROP POLICY IF EXISTS "Public Access Users" ON resqx_users;
+CREATE POLICY "Public Access Users" ON resqx_users FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Sessions" ON resqx_sessions;
+CREATE POLICY "Public Access Sessions" ON resqx_sessions FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Incidents" ON resqx_incidents;
+CREATE POLICY "Public Access Incidents" ON resqx_incidents FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Radio" ON resqx_radio_messages;
+CREATE POLICY "Public Access Radio" ON resqx_radio_messages FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Audit" ON resqx_audit_logs;
+CREATE POLICY "Public Access Audit" ON resqx_audit_logs FOR ALL USING (true) WITH CHECK (true);
 
 -- 3. Initial Pre-Seeded Accounts (Password: citizen123 / amb123 / hosp123 / admin123)
 -- Citizens
