@@ -16,7 +16,8 @@ const SAMPLE_PROMPTS = [
   "Two cars collided near Koti. Five people injured. One person unconscious.",
   "Elderly male experiencing acute chest pain radiating to left arm and shortness of breath in Banjara Hills Road No. 12.",
   "Motorbike skidded on wet road near Clock Tower, Secunderabad. Driver conscious with leg fracture.",
-  "Industrial chemical leak in warehouse with 4 workers having severe respiratory distress and eye burns."
+  "Industrial chemical leak in warehouse with 4 workers having severe respiratory distress and eye burns.",
+  "Cylinder blast at restaurant in Gachibowli, 3 people burned and unconscious."
 ];
 
 export default function AIEngineView() {
@@ -215,6 +216,59 @@ export default function AIEngineView() {
                   </div>
                 </div>
 
+                {result.detected_conditions?.length > 0 && (
+                  <div className="pt-2">
+                    <span className="text-[11px] font-bold text-slate-700 block mb-1">Detected Clinical Conditions:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {result.detected_conditions.map((c) => (
+                        <span key={c.id} title={`Matched: ${c.matched.join(', ')}`}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${c.tier === 'Critical' ? 'bg-red-50 text-red-800 border-red-200' : c.tier === 'High' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                          {c.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {result.hospital_requirements && (
+                  <div className="pt-2 grid grid-cols-3 gap-2">
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-bold block">ICU Beds</span>
+                      <span className="font-bold text-slate-900 text-sm">{result.hospital_requirements.icu_beds}</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-bold block">Units Needed</span>
+                      <span className="font-bold text-slate-900 text-sm">{result.ambulances_needed}</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-slate-500 text-[10px] uppercase font-bold block">Trauma Centre</span>
+                      <span className="font-bold text-slate-900 text-sm">{result.hospital_requirements.trauma_center_required ? 'Required' : 'No'}</span>
+                    </div>
+                    {result.hospital_requirements.specialties?.length > 0 && (
+                      <div className="col-span-3 text-[11px] text-slate-600">
+                        <strong>Receiving specialties:</strong> {result.hospital_requirements.specialties.join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {result.ai_clinical_summary && (
+                  <div className="pt-2">
+                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Gemini Clinical Summary
+                      {result.ai_latency_ms != null && <span className="font-normal text-slate-400">({result.ai_latency_ms} ms)</span>}
+                    </span>
+                    <p className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 leading-relaxed">
+                      {result.ai_clinical_summary}
+                    </p>
+                    {result.ai_paramedic_prep?.length > 0 && (
+                      <ul className="mt-1 list-disc list-inside text-[11px] text-slate-600">
+                        {result.ai_paramedic_prep.map((p, i) => <li key={i}>{p}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
                 <div className="pt-2">
                   <span className="text-[11px] font-bold text-slate-700 block mb-1">AI Explainability Rationale:</span>
                   <p className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 leading-relaxed italic">
@@ -235,11 +289,28 @@ export default function AIEngineView() {
               Scoring Weight Distribution Matrix
             </h4>
             <div className="space-y-1 font-mono text-[11px] text-slate-600">
-              <div className="flex justify-between"><span>Base Severity (Critical/High/Mod):</span><strong>75 / 55 / 35 pts</strong></div>
-              <div className="flex justify-between"><span>Unconscious Patient Indicator:</span><strong>+15 pts</strong></div>
-              <div className="flex justify-between"><span>ICU Requirement:</span><strong>+10 pts</strong></div>
-              <div className="flex justify-between"><span>Multi-Casualty Bonus (up to 5):</span><strong>+3 pts / casualty</strong></div>
-              <div className="flex justify-between"><span>High-Urgency Cardiac Factor:</span><strong>+8 pts</strong></div>
+              {result?.score_breakdown ? (
+                <>
+                  {result.score_breakdown.map((b, i) => (
+                    <div key={i} className="flex justify-between"><span>{b.factor}:</span><strong>+{b.points} pts</strong></div>
+                  ))}
+                  <div className="flex justify-between border-t border-slate-300 pt-1 text-slate-900">
+                    <span>Priority score (capped 99.9):</span><strong>{result.priority_score}</strong>
+                  </div>
+                  <div className="text-[10px] text-slate-400 pt-1">
+                    {result.classification_method} · {result.processing_ms} ms
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between"><span>Base Severity (Critical/High/Mod/Low):</span><strong>70 / 50 / 30 / 12 pts</strong></div>
+                  <div className="flex justify-between"><span>Unconscious Patient:</span><strong>+12 pts</strong></div>
+                  <div className="flex justify-between"><span>Clinical Condition Markers:</span><strong>up to +12 pts</strong></div>
+                  <div className="flex justify-between"><span>Casualty Load:</span><strong>+2.5 pts / extra patient (max 12)</strong></div>
+                  <div className="flex justify-between"><span>Vulnerable Patient (child/elderly/pregnant):</span><strong>+4 pts</strong></div>
+                  <div className="flex justify-between"><span>Caller Wait Time:</span><strong>+0.5 pts / min (max 8)</strong></div>
+                </>
+              )}
             </div>
           </div>
         </div>

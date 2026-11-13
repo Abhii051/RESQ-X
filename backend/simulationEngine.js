@@ -12,6 +12,9 @@ export class UnifiedSimulationEngine {
     const prevStatus = amb.status;
     amb.status = "Unavailable";
     const affectedIncId = amb.assigned_incident_id;
+    // Remember what the unit was doing so the ripple analyzer can trace it later
+    amb.last_incident_id = affectedIncId || null;
+    amb.last_eta_minutes = amb.eta_minutes ?? null;
     amb.assigned_incident_id = null;
     amb.eta_minutes = null;
 
@@ -55,7 +58,8 @@ export class UnifiedSimulationEngine {
         appState.addDecisionLog({
           eventType: "AMBULANCE_FAILURE_RECOVERY",
           decision: `Emergency Reallocation: ${selectedAmbulance.code} replaced failed unit ${amb.code}`,
-          reason: `Primary unit ${amb.code} suffered sudden breakdown. System protected active critical mission on RESQ-A02 and mobilized idle standby ${selectedAmbulance.code} from ${selectedAmbulance.zone_id} with required ALS equipment.`,
+          reason: `Primary unit ${amb.code} suffered sudden breakdown. No active patient mission was disturbed; idle standby ${selectedAmbulance.code} (${selectedAmbulance.type}) mobilized from ${selectedAmbulance.zone_id}.` +
+            (ripple.reserve_mobilization?.length ? ` Coverage backfill: ${ripple.reserve_mobilization.map(m => m.action).join(" ")}` : ""),
           alternatives: candidates.filter(c => c.feasible).map(c => c.code),
           rejected: rejections,
           prev: `${amb.code} -> ${affectedIncident.id}`,
@@ -107,6 +111,7 @@ export class UnifiedSimulationEngine {
         );
 
         if (altHosp) {
+          inc.diverted_from_hospital_id = hospitalId;
           inc.assigned_hospital_id = altHosp.id;
           if (inc.assigned_ambulance_id) {
             const amb = appState.ambulances.find(a => a.id === inc.assigned_ambulance_id);

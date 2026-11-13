@@ -85,6 +85,10 @@ export default function RippleAnalyzerView({ state, onRefresh }) {
       nodePositions[n.id] = { x: 90 + ambIdx * spread, y: 320 };
     } else if (n.type === 'hospital') {
       nodePositions[n.id] = { x: width * 0.82, y: 220 };
+    } else if (n.type === 'zone') {
+      const zCount = nodes.filter(x => x.type === 'zone').length;
+      const zIdx = nodes.filter(x => x.type === 'zone').indexOf(n);
+      nodePositions[n.id] = { x: width * 0.5 + (zIdx - (zCount - 1) / 2) * 160, y: 405 };
     } else {
       nodePositions[n.id] = { x: 100 + (idx * 90) % (width - 150), y: 350 };
     }
@@ -243,6 +247,7 @@ export default function RippleAnalyzerView({ state, onRefresh }) {
                 const isAffected = n.status === 'affected';
                 const isIndirect = n.status === 'indirect_affected';
                 const isCandidate = n.status === 'candidate';
+                const isStandby = n.status === 'standby';
                 const isSelected = selectedNode?.id === n.id;
 
                 const fillColor = isFailed
@@ -253,6 +258,8 @@ export default function RippleAnalyzerView({ state, onRefresh }) {
                   ? '#E5A52D'
                   : isCandidate
                   ? '#0F9D91'
+                  : isStandby
+                  ? '#94A3B8'
                   : '#2563A6';
 
                 return (
@@ -295,7 +302,7 @@ export default function RippleAnalyzerView({ state, onRefresh }) {
                       fontWeight="900"
                       textAnchor="middle"
                     >
-                      {n.type === 'failure' ? '!' : n.type === 'incident' ? 'INC' : n.type === 'ambulance' ? 'AMB' : 'HSP'}
+                      {n.type === 'failure' ? '!' : n.type === 'incident' ? 'INC' : n.type === 'ambulance' ? 'AMB' : n.type === 'zone' ? 'GAP' : 'HSP'}
                     </text>
 
                     {/* Label below node */}
@@ -394,6 +401,70 @@ export default function RippleAnalyzerView({ state, onRefresh }) {
           </div>
         </div>
       </div>
+
+      {/* Secondary Latency & Reserve Mobilization */}
+      {(analysisData?.secondary_latency_impacts?.length > 0 || analysisData?.reserve_mobilization?.length > 0) && (
+        <div className="bg-white rounded-2xl border border-[#E3E9EF] p-5 shadow-2xs grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <h3 className="text-xs font-bold text-[#17324D] uppercase tracking-wider mb-3 flex items-center space-x-2">
+              <Activity className="w-4 h-4 text-amber-500" />
+              <span>Secondary Response-Time Impact</span>
+            </h3>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-[10px] uppercase text-slate-500 text-left">
+                  <th className="pb-1.5">{analysisData?.resource_type === 'hospital' ? 'Incident' : 'Zone'}</th>
+                  <th className="pb-1.5 text-right">Before</th>
+                  <th className="pb-1.5 text-right">After</th>
+                  <th className="pb-1.5 text-right">Change</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysisData.secondary_latency_impacts.slice(0, 6).map((z) => (
+                  <tr key={z.zone_id || z.incident_id} className="border-t border-slate-100">
+                    <td className="py-1.5 font-semibold text-slate-700">
+                      {z.zone_name || z.incident_id}
+                      {z.below_target && <span className="ml-1 text-[9px] font-bold text-red-600">BEYOND {analysisData.response_target_minutes}m</span>}
+                      {!z.below_target && z.lost_own_unit && <span className="ml-1 text-[9px] font-bold text-amber-600">NO OWN UNIT</span>}
+                    </td>
+                    <td className="py-1.5 text-right font-mono">{z.eta_before ?? '∞'}m</td>
+                    <td className="py-1.5 text-right font-mono">{z.eta_after ?? '∞'}m</td>
+                    <td className={`py-1.5 text-right font-mono font-bold ${(z.delta_minutes ?? 99) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {z.delta_minutes == null ? '∞' : `${z.delta_minutes > 0 ? '+' : ''}${z.delta_minutes}m`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-[#17324D] uppercase tracking-wider mb-3 flex items-center space-x-2">
+              <ShieldAlert className="w-4 h-4 text-[#0F9D91]" />
+              <span>Reserve Mobilization Plan</span>
+            </h3>
+            {analysisData?.reserve_mobilization?.length > 0 ? (
+              <div className="space-y-2">
+                {analysisData.reserve_mobilization.map((m) => (
+                  <div key={m.gap_zone_id} className="p-3 rounded-xl border border-teal-200 bg-teal-50/40 text-xs">
+                    <div className="font-bold text-[#17324D]">
+                      {m.reserve_unit} ({m.reserve_type}): {m.donor_zone_name} → {m.gap_zone_name}
+                    </div>
+                    <div className="text-slate-600 mt-1">
+                      Reposition {m.reposition_minutes} min · {m.gap_zone_name} response {m.coverage_eta_before ?? '∞'}m → ~{m.coverage_eta_after}m ·
+                      {m.donor_units_left > 0 ? ` donor keeps ${m.donor_units_left} unit(s)` : ' donor left without own unit'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">No safe reserve move: every spare unit would uncover a zone of equal or higher risk. Hold positions and pre-alert mutual aid.</p>
+            )}
+            {analysisData?.computation_ms != null && (
+              <p className="text-[10px] text-slate-400 mt-3">Cascade computed in {analysisData.computation_ms} ms</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Evaluated Options & Trade-offs Table */}
       <div className="bg-white rounded-2xl border border-[#E3E9EF] p-5 shadow-2xs">

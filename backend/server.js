@@ -291,6 +291,8 @@ app.post('/api/report', (req, res) => {
 
   const incId = `inc-${String(appState.incidents.length + 1).padStart(2, '0')}`;
   const zone = appState.zones.find(z => z.id === zone_id) || appState.zones[0];
+  // NLP may correct the caller's category (e.g. "road accident" chosen for chest pain)
+  const incCategory = analysis.inferred_category || category;
 
   const incLat = lat ? Number(lat) : (zone.lat + 0.001);
   const incLng = lng ? Number(lng) : (zone.lng + 0.001);
@@ -300,19 +302,23 @@ app.post('/api/report', (req, res) => {
 
   const newInc = {
     id: incId,
-    title: `${category.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())} - ${zone.name}`,
+    title: `${incCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} - ${zone.name}`,
     description,
-    category,
+    category: incCategory,
+    caller_category: category,
     zone_id: zone.id,
     lat: incLat,
     lng: incLng,
     severity: analysis.severity,
     urgency: analysis.urgency,
     priority_score: analysis.priority_score,
-    affected_count: Number(affected_count),
-    injured_count: Number(injured_count),
+    affected_count: analysis.affected_count,
+    injured_count: analysis.injured_count,
     unconscious: analysis.unconscious,
     requires_icu: analysis.requires_icu,
+    hospital_requirements: analysis.hospital_requirements,
+    ambulances_needed: analysis.ambulances_needed,
+    detected_conditions: analysis.detected_conditions,
     required_equipment: analysis.required_equipment,
     recommended_ambulance_type: analysis.recommended_ambulance_type,
     status: "Pending",
@@ -386,6 +392,29 @@ app.post('/api/report', (req, res) => {
   // Persist incident in SQLite Database
   saveIncidentRecord(newInc, reportingCitizenId, reportingCitizenName);
 
+  // Dispatch never waits for the LLM: Gemini enriches the incident afterwards
+  if (process.env.GEMINI_API_KEY && description) {
+    AIEmergencyIntelligence.analyzeEmergencyWithAI({ description, category, injured_count, affected_count, unconscious })
+      .then(ai => {
+        if (ai.ai_layer !== 'gemini') return;
+        newInc.ai_clinical_summary = ai.ai_clinical_summary;
+        newInc.ai_paramedic_prep = ai.ai_paramedic_prep;
+        if (ai.severity !== newInc.severity) {
+          appState.addDecisionLog({
+            eventType: "AI_SEVERITY_ESCALATION",
+            decision: `Gemini escalated ${newInc.id} from ${newInc.severity} to ${ai.severity}`,
+            reason: ai.ai_clinical_summary,
+            severity: ai.severity === "Critical" ? "Critical" : "Info"
+          });
+          newInc.severity = ai.severity;
+          newInc.urgency = ai.urgency;
+          newInc.priority_score = ai.priority_score;
+        }
+        broadcastState();
+      })
+      .catch(() => {});
+  }
+
   appState.recomputeMetrics();
   broadcastState();
 
@@ -399,8 +428,9 @@ app.post('/api/report', (req, res) => {
   });
 });
 
-app.post('/api/ai/analyze', (req, res) => {
-  const result = AIEmergencyIntelligence.analyzeEmergency(req.body);
+app.post('/api/ai/analyze', async (req, res) => {
+  // Rules engine always; Gemini summary added when GEMINI_API_KEY is set
+  const result = await AIEmergencyIntelligence.analyzeEmergencyWithAI(req.body || {});
   res.json(result);
 });
 
