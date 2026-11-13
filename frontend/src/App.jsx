@@ -53,7 +53,16 @@ function MainLayout() {
       const data = await fetchState();
       setState(data);
     } catch (e) {
-      console.error("Failed to load state", e);
+      console.warn("Backend API not reachable directly, attempting static fallback telemetry:", e.message);
+      try {
+        const fallbackRes = await fetch('/initial_state.json');
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          setState(fallbackData);
+        }
+      } catch (err) {
+        console.error("Fallback load failed", err);
+      }
     }
   };
 
