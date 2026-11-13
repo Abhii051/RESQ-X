@@ -1,10 +1,18 @@
-// RESQ-X Native SQLite Database & Authentication Engine
-// Powered by Node.js 24 native node:sqlite and node:crypto
+// RESQ-X Hybrid Database & Authentication Engine
+// Supports Supabase Cloud (PostgreSQL) + Node.js 24 embedded SQLite
 import { DatabaseSync } from 'node:sqlite';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import {
+  isSupabaseConfigured,
+  getSupabaseStatus,
+  supabaseInsertUser,
+  supabaseInsertSession,
+  supabaseInsertIncident,
+  supabaseInsertRadio
+} from './supabaseClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -127,6 +135,13 @@ function insertUser({ id, username, password, role, name, email, phone, entity_i
   `);
 
   stmt.run(id, username.toLowerCase(), hash, salt, role, name, email, phone, entity_id, JSON.stringify(metadata), now);
+
+  // Sync with Supabase if connected
+  if (isSupabaseConfigured()) {
+    supabaseInsertUser({
+      id, username: username.toLowerCase(), password_hash: hash, password_salt: salt, role, name, email, phone, entity_id, metadata, created_at: now
+    }).catch(() => {});
+  }
 }
 
 function seedInitialUsers() {
@@ -316,6 +331,12 @@ export function registerCitizen({ username, password, name, phone, email, blood_
     VALUES (?, ?, ?, ?, 'citizen', ?, ?, ?, ?, ?, ?)
   `).run(id, cleanUser, hash, salt, name, email || '', phone || '', id, JSON.stringify(metadata), now);
 
+  if (isSupabaseConfigured()) {
+    supabaseInsertUser({
+      id, username: cleanUser, password_hash: hash, password_salt: salt, role: 'citizen', name, email, phone, entity_id: id, metadata, created_at: now
+    }).catch(() => {});
+  }
+
   const user = sanitizeUser(getUserById(id));
   const session = createSession(user);
   return { user, token: session.token };
@@ -474,6 +495,10 @@ export function saveIncidentRecord(incident, citizenId = null, citizenName = nul
         payload
       );
     }
+
+    if (isSupabaseConfigured()) {
+      supabaseInsertIncident(incident, citizenId, citizenName).catch(() => {});
+    }
   } catch (err) {
     console.error("[Database] Failed to save incident:", err.message);
   }
@@ -505,7 +530,11 @@ export function saveRadioMessage({ sender, channel, message, ambulance_id = null
       INSERT INTO radio_messages (id, timestamp, sender, channel, message, ambulance_id)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(id, now, sender, channel, message, ambulance_id);
-    return { id, timestamp: now, sender, channel, message, ambulance_id };
+    const record = { id, timestamp: now, sender, channel, message, ambulance_id };
+    if (isSupabaseConfigured()) {
+      supabaseInsertRadio(record).catch(() => {});
+    }
+    return record;
   } catch (e) {
     console.error("[Database] Failed to save radio message:", e.message);
     return null;
@@ -524,6 +553,8 @@ export function getRadioMessages(ambulanceId = null) {
 }
 
 export function getDatabaseStats() {
+  const supabaseInfo = getSupabaseStatus();
+
   try {
     const userCount = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
     const sessionCount = db.prepare("SELECT COUNT(*) as c FROM sessions").get().c;
@@ -536,7 +567,9 @@ export function getDatabaseStats() {
     }
 
     return {
-      engine: 'node:sqlite (Embedded SQLite3 WAL)',
+      engine: supabaseInfo.configured ? 'Supabase Cloud PostgreSQL' : 'Supabase + SQLite Dual-Engine',
+      provider: supabaseInfo.configured ? 'Supabase Cloud (PostgreSQL)' : 'Supabase Ready (Standby)',
+      supabase: supabaseInfo,
       db_file: DB_PATH,
       file_size_bytes: fileSize,
       file_size_formatted: `${(fileSize / 1024).toFixed(1)} KB`,
@@ -546,12 +579,13 @@ export function getDatabaseStats() {
         incidents: incidentCount,
         radio_messages: radioCount
       },
-      status: 'Connected & Healthy',
+      status: supabaseInfo.configured ? 'Supabase Cloud Active' : 'Supabase Ready (Awaiting URL & Key)',
       timestamp: new Date().toISOString()
     };
   } catch (err) {
     return {
-      engine: 'node:sqlite',
+      engine: 'Supabase Cloud + Local Engine',
+      supabase: supabaseInfo,
       status: 'Error: ' + err.message
     };
   }

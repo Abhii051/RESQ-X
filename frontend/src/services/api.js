@@ -118,6 +118,37 @@ export async function fetchDatabaseStats() {
   return res.json();
 }
 
+export async function fetchSupabaseStatus() {
+  const res = await fetch(`${API_BASE}/supabase/status`);
+  if (!res.ok) throw new Error("Failed to fetch Supabase status");
+  return res.json();
+}
+
+export async function configureSupabase(url, anonKey) {
+  const res = await fetch(`${API_BASE}/supabase/config`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ url, anonKey })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to configure Supabase");
+  return data;
+}
+
+export async function testSupabaseConnection(url, anonKey) {
+  const res = await fetch(`${API_BASE}/supabase/test`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ url, anonKey })
+  });
+  return res.json();
+}
+
+export async function fetchSupabaseSchema() {
+  const res = await fetch(`${API_BASE}/supabase/schema`);
+  return res.text();
+}
+
 export async function fetchCitizenIncidents(citizenId = null) {
   const url = citizenId ? `${API_BASE}/citizen/incidents?citizen_id=${citizenId}` : `${API_BASE}/citizen/incidents`;
   const res = await fetch(url, { headers: getAuthHeaders() });

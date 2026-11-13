@@ -11,6 +11,7 @@ import {
   Flame,
   X,
   Database,
+  Cloud,
   User,
   LogOut,
   ChevronDown,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import { triggerSimulationEvent } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import SupabaseModal from './SupabaseModal';
 
 export const ROLE_DASHBOARDS = [
   { id: 'citizen', label: 'Citizen Dashboard (SOS)', icon: Users, badge: 'Public 108', roleKey: 'citizen' },
@@ -36,6 +38,7 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
   const [showAlerts, setShowAlerts] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showDbPopover, setShowDbPopover] = useState(false);
+  const [showSupabaseModal, setShowSupabaseModal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
@@ -109,8 +112,26 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
           </div>
         </div>
 
-        {/* Right: SQLite Status, User Profile, Alerts & Clock */}
+        {/* Right: Supabase Status, SQLite Status, User Profile, Alerts & Clock */}
         <div className="flex items-center space-x-2 shrink-0">
+          {/* Supabase Cloud Database Button */}
+          <button
+            onClick={() => setShowSupabaseModal(true)}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition shadow-2xs ${
+              dbStats?.supabase?.configured
+                ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                : 'bg-teal-50 hover:bg-teal-100 border-teal-200 text-teal-800'
+            }`}
+            title="Click to view/configure Supabase Cloud Database"
+          >
+            <Cloud className="w-3.5 h-3.5 text-teal-600" />
+            <span className="hidden sm:inline">Supabase:</span>
+            <span className={dbStats?.supabase?.configured ? 'text-emerald-700 font-black' : 'text-teal-700 font-medium'}>
+              {dbStats?.supabase?.configured ? 'Cloud Active' : 'Connect'}
+            </span>
+            <span className={`w-1.5 h-1.5 rounded-full ${dbStats?.supabase?.configured ? 'bg-emerald-500 animate-pulse' : 'bg-teal-400'}`} />
+          </button>
+
           {/* SQLite Database Live Pill */}
           <div className="relative">
             <button
@@ -427,6 +448,13 @@ export default function Header({ currentTab, onSelectTab, state, wsStatus, onRef
           );
         })}
       </nav>
+
+      {/* Supabase Cloud Connection & Configuration Modal */}
+      <SupabaseModal
+        isOpen={showSupabaseModal}
+        onClose={() => setShowSupabaseModal(false)}
+        onConfigSaved={onRefresh}
+      />
     </header>
   );
 }

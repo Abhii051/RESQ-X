@@ -14,6 +14,7 @@ import { HospitalOverloadPredictor } from './hospitalPredictor.js';
 import { SmartPrepositioningEngine } from './prepositioning.js';
 import { DispatchComparator } from './comparison.js';
 import { UnifiedSimulationEngine } from './simulationEngine.js';
+import fs from 'node:fs';
 import {
   initDatabase,
   authenticateUser,
@@ -27,6 +28,12 @@ import {
   saveRadioMessage,
   getRadioMessages
 } from './database.js';
+import {
+  getSupabaseStatus,
+  saveSupabaseConfig,
+  testSupabaseConnection,
+  isSupabaseConfigured
+} from './supabaseClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -168,9 +175,48 @@ app.get('/api/auth/demo-users', (req, res) => {
   res.json(getDemoUsers());
 });
 
-// SQLite Database Health and Stats
+// SQLite & Supabase Database Health and Stats
 app.get('/api/database/stats', (req, res) => {
   res.json(getDatabaseStats());
+});
+
+// Supabase Cloud Configuration & Status
+app.get('/api/supabase/status', (req, res) => {
+  res.json(getSupabaseStatus());
+});
+
+app.post('/api/supabase/config', (req, res) => {
+  try {
+    const { url, anonKey } = req.body;
+    const result = saveSupabaseConfig(url, anonKey);
+    broadcastState();
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/supabase/test', async (req, res) => {
+  try {
+    const { url, anonKey } = req.body;
+    const result = await testSupabaseConnection(url, anonKey);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/supabase/schema', (req, res) => {
+  try {
+    const schemaPath = path.join(__dirname, '..', 'supabase_schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const sql = fs.readFileSync(schemaPath, 'utf8');
+      return res.type('text/plain').send(sql);
+    }
+    res.status(404).send("-- Schema file not found");
+  } catch (err) {
+    res.status(500).send("-- Error: " + err.message);
+  }
 });
 
 // Citizen Emergency History from Database
