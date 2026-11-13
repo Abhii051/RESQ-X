@@ -1,19 +1,19 @@
 -- =========================================================================
--- RESQ-X Complete Supabase PostgreSQL Schema & Initial Dataset
--- Problem Statement 10: Predictive Emergency Intelligence for Hyderabad Metro
+-- RESQ-X Complete Supabase PostgreSQL Schema
+-- Problem Statement 10: Smart Emergency Management for Hyderabad Metro
 -- =========================================================================
 
--- 1. Create Tables
+-- 1. Create Core Tables
 CREATE TABLE IF NOT EXISTS resqx_users (
   id TEXT PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   password_salt TEXT NOT NULL,
-  role TEXT NOT NULL, -- 'citizen' | 'ambulance' | 'hospital' | 'command'
+  role TEXT NOT NULL,
   name TEXT NOT NULL,
   email TEXT,
   phone TEXT,
-  entity_id TEXT, -- e.g. 'amb-01' or 'hosp-01'
+  entity_id TEXT,
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_login_at TIMESTAMPTZ
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS resqx_audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Row Level Security (RLS) & Public Policies for Demo
+-- 2. Row Level Security (RLS) & Public Policies
 ALTER TABLE resqx_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resqx_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resqx_incidents ENABLE ROW LEVEL SECURITY;
@@ -92,31 +92,115 @@ CREATE POLICY "Public Access Radio" ON resqx_radio_messages FOR ALL USING (true)
 DROP POLICY IF EXISTS "Public Access Audit" ON resqx_audit_logs;
 CREATE POLICY "Public Access Audit" ON resqx_audit_logs FOR ALL USING (true) WITH CHECK (true);
 
--- 3. Initial Pre-Seeded Accounts (Password: citizen123 / amb123 / hosp123 / admin123)
--- Citizens
+-- 3. Initial Seed Accounts
+-- Citizen: citizen_rahul (pass: citizen123)
 INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, email, metadata)
-VALUES
-  ('cit-01', 'citizen_rahul', '0c9fa733d719cb07b22d1ce7ad9c10444371bfabff29505ba1adcbdd6f9f984fe7c92b23bc978ae2c48da84fa17a3a83021469e34d66762334f5aa1a018b3e83', 'ec79e9d62da0d93edc67e2f096939d7f', 'citizen', 'Rahul Sharma', '9876543210', 'rahul.sharma@example.com', '{"blood_group": "O+", "allergies": "Penicillin", "emergency_contact_phone": "+91 9876543211"}'::jsonb),
-  ('cit-02', 'citizen_priya', '0c9fa733d719cb07b22d1ce7ad9c10444371bfabff29505ba1adcbdd6f9f984fe7c92b23bc978ae2c48da84fa17a3a83021469e34d66762334f5aa1a018b3e83', 'ec79e9d62da0d93edc67e2f096939d7f', 'citizen', 'Priya Reddy', '9848022338', 'priya.reddy@example.com', '{"blood_group": "B+", "allergies": "None", "emergency_contact_phone": "+91 9848022339"}'::jsonb)
-ON CONFLICT (username) DO NOTHING;
+VALUES (
+  'cit-01',
+  'citizen_rahul',
+  '0c9fa733d719cb07b22d1ce7ad9c10444371bfabff29505ba1adcbdd6f9f984fe7c92b23bc978ae2c48da84fa17a3a83021469e34d66762334f5aa1a018b3e83',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'citizen',
+  'Rahul Sharma',
+  '9876543210',
+  'rahul.sharma@example.com',
+  '{"blood_group": "O+", "allergies": "Penicillin", "emergency_contact_phone": "+91 9876543211"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
 
--- Ambulances (RESQ-A01 to RESQ-A10)
-INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
-VALUES
-  ('usr-amb-01', 'paramedic_a01', 'd32d0d0c35fa7c07da3382ba1e988229ef5e0eebf1f33ee6ae78a8be1cf305d2146051515ee0ce6bb855272a5a0cb08ad0d1e34ff051da009dcf982ea255e143', 'ec79e9d62da0d93edc67e2f096939d7f', 'ambulance', 'Paramedic Unit RESQ-A01', '+91 9900100001', 'amb-01', '{"unit_code": "RESQ-A01", "ambulance_type": "ALS", "driver_name": "Suresh Kumar", "paramedic_name": "Dr. Anita Desai", "badge_number": "EMR-HYD-7701"}'::jsonb),
-  ('usr-amb-02', 'paramedic_a02', 'd32d0d0c35fa7c07da3382ba1e988229ef5e0eebf1f33ee6ae78a8be1cf305d2146051515ee0ce6bb855272a5a0cb08ad0d1e34ff051da009dcf982ea255e143', 'ec79e9d62da0d93edc67e2f096939d7f', 'ambulance', 'Paramedic Unit RESQ-A02', '+91 9900100002', 'amb-02', '{"unit_code": "RESQ-A02", "ambulance_type": "BLS", "driver_name": "K. Venu", "paramedic_name": "Nurse Ravi Teja", "badge_number": "EMR-HYD-7702"}'::jsonb),
-  ('usr-amb-03', 'paramedic_a03', 'd32d0d0c35fa7c07da3382ba1e988229ef5e0eebf1f33ee6ae78a8be1cf305d2146051515ee0ce6bb855272a5a0cb08ad0d1e34ff051da009dcf982ea255e143', 'ec79e9d62da0d93edc67e2f096939d7f', 'ambulance', 'Paramedic Unit RESQ-A03', '+91 9900100003', 'amb-03', '{"unit_code": "RESQ-A03", "ambulance_type": "ALS", "driver_name": "Md. Imran", "paramedic_name": "Dr. John Mathew", "badge_number": "EMR-HYD-7703"}'::jsonb)
-ON CONFLICT (username) DO NOTHING;
+-- Citizen: citizen_priya (pass: citizen123)
+INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, email, metadata)
+VALUES (
+  'cit-02',
+  'citizen_priya',
+  '0c9fa733d719cb07b22d1ce7ad9c10444371bfabff29505ba1adcbdd6f9f984fe7c92b23bc978ae2c48da84fa17a3a83021469e34d66762334f5aa1a018b3e83',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'citizen',
+  'Priya Reddy',
+  '9848022338',
+  'priya.reddy@example.com',
+  '{"blood_group": "B+", "allergies": "None", "emergency_contact_phone": "+91 9848022339"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
 
--- Hospitals
+-- Ambulance: paramedic_a01 (pass: amb123)
 INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
-VALUES
-  ('usr-hosp-01', 'hosp_osmania', '66504a58f79fbc38b80983ad2e95a94747ebafbe8ce7c3f3e1a0ad05504746f34e9e49c7161b96d991b5853767f40778c430e71c9fa6a836da8a50c8e312a0f8', 'ec79e9d62da0d93edc67e2f096939d7f', 'hospital', 'Osmania General Hospital ER Desk', '+91 040-24600121', 'hosp-01', '{"hospital_name": "Osmania General Hospital", "trauma_certification": "Level 1", "medical_officer": "Dr. Venkat Rao"}'::jsonb),
-  ('usr-hosp-02', 'hosp_gandhi', '66504a58f79fbc38b80983ad2e95a94747ebafbe8ce7c3f3e1a0ad05504746f34e9e49c7161b96d991b5853767f40778c430e71c9fa6a836da8a50c8e312a0f8', 'ec79e9d62da0d93edc67e2f096939d7f', 'hospital', 'Gandhi Hospital ED Desk', '+91 040-27505566', 'hosp-02', '{"hospital_name": "Gandhi Hospital", "trauma_certification": "Level 1", "medical_officer": "Dr. Sunitha Reddy"}'::jsonb)
-ON CONFLICT (username) DO NOTHING;
+VALUES (
+  'usr-amb-01',
+  'paramedic_a01',
+  'd32d0d0c35fa7c07da3382ba1e988229ef5e0eebf1f33ee6ae78a8be1cf305d2146051515ee0ce6bb855272a5a0cb08ad0d1e34ff051da009dcf982ea255e143',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'ambulance',
+  'Paramedic Unit RESQ-A01',
+  '+91 9900100001',
+  'amb-01',
+  '{"unit_code": "RESQ-A01", "ambulance_type": "ALS", "driver_name": "Suresh Kumar", "paramedic_name": "Dr. Anita Desai", "badge_number": "EMR-HYD-7701"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
 
--- Command Dispatcher
+-- Ambulance: paramedic_a02 (pass: amb123)
 INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
-VALUES
-  ('usr-cmd-01', 'command_admin', '8b4566738b556942858444a7f0535cb854a01c4dc1b8ef05d15ca31a473a24681676d123284beff5062828b438bf2281ab669be740e53ef711b7147a2408b8b3', 'ec79e9d62da0d93edc67e2f096939d7f', 'command', 'Municipal Emergency Director Rao', '+91 9440001122', 'cmd-hq', '{"clearance_level": "Master Operator (Level 5)"}'::jsonb)
-ON CONFLICT (username) DO NOTHING;
+VALUES (
+  'usr-amb-02',
+  'paramedic_a02',
+  'd32d0d0c35fa7c07da3382ba1e988229ef5e0eebf1f33ee6ae78a8be1cf305d2146051515ee0ce6bb855272a5a0cb08ad0d1e34ff051da009dcf982ea255e143',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'ambulance',
+  'Paramedic Unit RESQ-A02',
+  '+91 9900100002',
+  'amb-02',
+  '{"unit_code": "RESQ-A02", "ambulance_type": "BLS", "driver_name": "K. Venu", "paramedic_name": "Nurse Ravi Teja", "badge_number": "EMR-HYD-7702"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
+
+-- Ambulance: paramedic_a03 (pass: amb123)
+INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
+VALUES (
+  'usr-amb-03',
+  'paramedic_a03',
+  'd32d0d0c35fa7c07da3382ba1e988229ef5e0eebf1f33ee6ae78a8be1cf305d2146051515ee0ce6bb855272a5a0cb08ad0d1e34ff051da009dcf982ea255e143',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'ambulance',
+  'Paramedic Unit RESQ-A03',
+  '+91 9900100003',
+  'amb-03',
+  '{"unit_code": "RESQ-A03", "ambulance_type": "ALS", "driver_name": "Md. Imran", "paramedic_name": "Dr. John Mathew", "badge_number": "EMR-HYD-7703"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
+
+-- Hospital: hosp_osmania (pass: hosp123)
+INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
+VALUES (
+  'usr-hosp-01',
+  'hosp_osmania',
+  '66504a58f79fbc38b80983ad2e95a94747ebafbe8ce7c3f3e1a0ad05504746f34e9e49c7161b96d991b5853767f40778c430e71c9fa6a836da8a50c8e312a0f8',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'hospital',
+  'Osmania General Hospital ER Desk',
+  '+91 040-24600121',
+  'hosp-01',
+  '{"hospital_name": "Osmania General Hospital", "trauma_certification": "Level 1", "medical_officer": "Dr. Venkat Rao"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
+
+-- Hospital: hosp_gandhi (pass: hosp123)
+INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
+VALUES (
+  'usr-hosp-02',
+  'hosp_gandhi',
+  '66504a58f79fbc38b80983ad2e95a94747ebafbe8ce7c3f3e1a0ad05504746f34e9e49c7161b96d991b5853767f40778c430e71c9fa6a836da8a50c8e312a0f8',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'hospital',
+  'Gandhi Hospital ED Desk',
+  '+91 040-27505566',
+  'hosp-02',
+  '{"hospital_name": "Gandhi Hospital", "trauma_certification": "Level 1", "medical_officer": "Dr. Sunitha Reddy"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
+
+-- Command: command_admin (pass: admin123)
+INSERT INTO resqx_users (id, username, password_hash, password_salt, role, name, phone, entity_id, metadata)
+VALUES (
+  'usr-cmd-01',
+  'command_admin',
+  '8b4566738b556942858444a7f0535cb854a01c4dc1b8ef05d15ca31a473a24681676d123284beff5062828b438bf2281ab669be740e53ef711b7147a2408b8b3',
+  'ec79e9d62da0d93edc67e2f096939d7f',
+  'command',
+  'Municipal Emergency Director Rao',
+  '+91 9440001122',
+  'cmd-hq',
+  '{"clearance_level": "Master Operator (Level 5)"}'::jsonb
+) ON CONFLICT (username) DO NOTHING;
