@@ -2,6 +2,7 @@ import React, { useState, useEffect, Component } from 'react';
 import Header from './components/Header';
 import { fetchState, subscribeToWebSocket } from './services/api';
 import { AuthProvider } from './context/AuthContext';
+import defaultState from './defaultState.json';
 
 // 4 Completely Distinct Role-Based Dashboards
 import CitizenPortalView from './views/CitizenPortalView';
@@ -45,24 +46,18 @@ class ErrorBoundary extends Component {
 
 function MainLayout() {
   const [currentTab, setCurrentTab] = useState('citizen');
-  const [state, setState] = useState(null);
+  // Immediately initialize with bundled dataset so Vercel SPA renders without delay
+  const [state, setState] = useState(defaultState);
   const [wsStatus, setWsStatus] = useState('connecting');
 
   const loadData = async () => {
     try {
       const data = await fetchState();
-      setState(data);
-    } catch (e) {
-      console.warn("Backend API not reachable directly, attempting static fallback telemetry:", e.message);
-      try {
-        const fallbackRes = await fetch('/initial_state.json');
-        if (fallbackRes.ok) {
-          const fallbackData = await fallbackRes.json();
-          setState(fallbackData);
-        }
-      } catch (err) {
-        console.error("Fallback load failed", err);
+      if (data && data.kpis) {
+        setState(data);
       }
+    } catch (e) {
+      // Backend is offline on standalone Vercel deployment; running with bundled state
     }
   };
 
